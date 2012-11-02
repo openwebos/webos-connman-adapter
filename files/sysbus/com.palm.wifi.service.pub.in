@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=com.palm.wifi
+Exec="@WEBOS_INSTALL_SBINDIR@/webos-connman-adapter
+Type=static
