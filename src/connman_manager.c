@@ -17,8 +17,22 @@
 * LICENSE@@@ */
 
 
+/**
+ * @file connman_manager.c
+ *
+ * @brief Connman manager interface
+ *
+ */
+
 #include "connman-interface.h"
 #include "connman_manager.h"
+
+/**
+ * @brief  Retrieve all the properties of the given manager instance
+ *
+ * @param  manager
+ *
+ */
 
 static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 {
@@ -36,6 +50,15 @@ static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 
 	return ret;
 }
+
+/**
+ * @brief  Check if the service is already present in the manager's
+ * services list.
+ *
+ * @param  manager
+ * @param  service_v
+ *
+ */
 
 
 static gboolean service_already_added(connman_manager_t *manager,
@@ -56,6 +79,12 @@ static gboolean service_already_added(connman_manager_t *manager,
 	return FALSE;
 }
 
+/**
+ * @brief  Check if the given service's "Ethernet" properties matches system's wifi interface
+ *
+ * @param  service_v
+ *
+ */
 
 static gboolean service_on_wifi_iface(GVariant	*service_v)
 {
@@ -174,6 +203,12 @@ static void connman_manager_remove_old_services(connman_manager_t *manager, GVar
 }
 #endif
 
+/**
+ * @brief  Free the manager's services list
+ *
+ * @param  manager
+ *
+ */
 
 static void connman_manager_free_services(connman_manager_t *manager)
 {
@@ -182,13 +217,27 @@ static void connman_manager_free_services(connman_manager_t *manager)
 	manager->services = NULL;
 }
 
+/**
+ * @brief  Free the manager's technologies list
+ *
+ * @param  manager
+ *
+ */
 
 static void connman_manager_free_technologies(connman_manager_t *manager)
+
 {
 	g_slist_foreach(manager->technologies, (GFunc) connman_technology_free, NULL);
 	g_slist_free(manager->technologies);
 	manager->technologies = NULL;
 }
+
+/**
+ * @brief  Retrieve all the services for the manager and add them to its list
+ *
+ * @param  manager
+ *
+ */
 
 static gboolean connman_manager_add_services(connman_manager_t *manager)
 {
@@ -223,6 +272,12 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 	return TRUE;
 }
 
+/**
+ * @brief  Retrieve all the technologies for the manager and add them to its list
+ *
+ * @param  manager
+ *
+ */
 
 static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 {
@@ -251,6 +306,14 @@ static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 	return TRUE;
 }
 
+/**
+ * @brief  Check if the manager is not in offline mode and available to 
+ * enable network connections
+ *
+ * @param  manager
+ *
+ */
+
 gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 {
 	GVariant *properties = connman_manager_get_properties(manager);
@@ -261,19 +324,25 @@ gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 		GVariant *property = g_variant_get_child_value(properties, i);
 		GVariant *key_v = g_variant_get_child_value(property, 0);
 		const gchar *key = g_variant_get_string(key_v, NULL);
-
-		if (g_str_equal(key, "offlineMode"))
+		if (g_str_equal(key, "OfflineMode"))
 		{
 	  		GVariant *v = g_variant_get_child_value(property, 1);
 			GVariant *va = g_variant_get_variant(v);
 			gboolean offline = g_variant_get_boolean(va);
-
+		
           		return !offline;
 		}
 	}
 
 	return FALSE;
 }
+
+/**
+ * @brief  Go through the manager's technologies list and get the wifi one
+ *
+ * @param  manager
+ *
+ */
 
 connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *manager)
 {
@@ -290,6 +359,15 @@ connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *m
 
 	return NULL;
 }
+
+
+/**
+ * @brief  Go through the manager's services list and get the one which is in "association",
+ * "configuration", "ready" or "online" state 
+ *
+ * @param  manager
+ *
+ */
 
 
 connman_service_t *connman_manager_get_connected_service (connman_manager_t *manager)
@@ -317,6 +395,15 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 
 }
 
+/**
+ * @brief  Update the manager's services list
+ * This function will be called whenever the "services_updated" flag is set to true
+ * which would happen if a new service is added, or existing service is modified/deleted.
+ *
+ * @param  manager
+ *
+ */
+
 void connman_manager_update_services(connman_manager_t *manager)
 {
 	if(manager->services_updated)
@@ -326,6 +413,15 @@ void connman_manager_update_services(connman_manager_t *manager)
 		manager->services_updated = FALSE;
 	}
 }
+
+/**
+ * @brief  Update the manager's technologies list
+ * This function will be called whenever the "technologies_updated" flag is set to true
+ * which would happen if a new technology is added, or existing technology is modified/deleted.
+ *
+ * @param  manager
+ *
+ */
 
 void connman_manager_update_technologies(connman_manager_t *manager)
 {
@@ -337,8 +433,15 @@ void connman_manager_update_technologies(connman_manager_t *manager)
 	}
 }
 
-
-//TODO Use property_changed signal for "com.palm.wifi/getstatus" subscriptions
+/**
+ * @brief  Callback for manager's "property_changed" signal
+ *
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  manager
+ *
+ */
 
 static void
 property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVariant *v,
@@ -348,6 +451,17 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
 	g_message("Manager property %s changed : %s",property, g_variant_get_string(va,NULL));
 }
 
+
+/**
+ * @brief  Callback for manager's "technology_added" signal
+ *
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  manager
+ *
+ */
+
 static void
 technology_added_cb(ConnmanInterfaceManager *proxy,const gchar * path, GVariant *v,
 	      connman_manager_t      *manager)
@@ -355,6 +469,13 @@ technology_added_cb(ConnmanInterfaceManager *proxy,const gchar * path, GVariant 
 	g_message("Technology %s added", path);
 	manager->technologies_updated = TRUE;
 }
+
+/**
+ * @brief  Callback for manager's "technology_removed" signal
+ *
+ * @param  manager
+ *
+ */
 
 static void
 technology_removed_cb(ConnmanInterfaceManager *proxy, GVariant *v,
@@ -364,6 +485,16 @@ technology_removed_cb(ConnmanInterfaceManager *proxy, GVariant *v,
 	manager->technologies_updated = TRUE;
 }
 
+/**
+ * @brief  Callback for manager's "services_changed" signal
+ *
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  manager
+ *
+ */
+
 static void 
 services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added, 
 		GVariant *services_removed, connman_manager_t *manager)
@@ -371,6 +502,16 @@ services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added,
 	g_message("Services_changed");
 	manager->services_updated = TRUE;
 }
+
+/**
+ * @brief  Initialize a new manager instance and update its services and technologies list
+ *
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  manager
+ *
+ */
 
 connman_manager_t *connman_manager_new (void)
 {
@@ -419,6 +560,13 @@ connman_manager_t *connman_manager_new (void)
 
 	return manager;
 }
+
+/**
+ * @brief  Free the manager instance
+ *
+ * @param  manager
+ *
+ */
 
 void connman_manager_free (connman_manager_t *manager)
 {

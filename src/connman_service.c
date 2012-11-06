@@ -16,21 +16,49 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file connman_service.c
+ *
+ * @brief Connman service interface
+ *
+ */
+
 #include "connman-interface.h"
 #include "connman_service.h"
 
-gboolean is_service_type_wifi(connman_service_t *service)
+/**
+ * @brief  Check if the type of the service is wifi
+ *
+ * @param  service
+ *
+ */
+
+gboolean connman_service_type_wifi(connman_service_t *service)
 {
 	return service->type == CONNMAN_SERVICE_TYPE_WIFI;
 }
 
-gboolean is_service_type_ethernet(connman_service_t *service)
+/**
+ * @brief  Check if the type of the service is ethernet
+ *
+ * @param  service
+ *
+ */
+
+gboolean connman_service_type_ethernet(connman_service_t *service)
 {
 	return service->type == CONNMAN_SERVICE_TYPE_ETHERNET;
 }
 
+/**
+ * @brief  Map the service connection status to corresponding webos state
+ * This function is required to send appropriate connection status to the webos world.
+ *
+ * @param  connman_state
+ *
+ */
 
-gchar *get_webos_state(int connman_state)
+gchar *connman_service_get_webos_state(int connman_state)
 {
 	switch (connman_state) 
 	{
@@ -51,6 +79,13 @@ gchar *get_webos_state(int connman_state)
 
     return "notAssociated";
 }
+
+/**
+ * @brief  Convert the connection state string to its enum value
+ *
+ * @param  state
+ *
+ */
 
 int connman_service_get_state(const gchar *state)
 {
@@ -74,6 +109,13 @@ int connman_service_get_state(const gchar *state)
 	return result;
 }
 
+/**
+ * @brief  Connect to a remote connman service
+ *
+ * @param  service
+ *
+ */
+
 gboolean connman_service_connect(connman_service_t *service)
 {
 	GError *error = NULL;
@@ -88,6 +130,14 @@ gboolean connman_service_connect(connman_service_t *service)
 	return TRUE;
 }
 
+
+/**
+ * @brief  Disconnect from a remote connman service
+ *
+ * @param  service
+ *
+ */
+
 gboolean connman_service_disconnect(connman_service_t *service)
 {
 	GError *error = NULL;
@@ -101,6 +151,14 @@ gboolean connman_service_disconnect(connman_service_t *service)
 	}
 	return TRUE;
 }
+
+
+/**
+ * @brief  Get all the network related information for a connected service (in online state)
+ *
+ * @param  service
+ *
+ */
 
 gboolean connman_service_get_ipinfo(connman_service_t *service)
 {
@@ -182,6 +240,14 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 	return TRUE;
 }
 
+
+/**
+ * @brief  Create a new connman service instance and set its properties
+ *
+ * @param  variant
+ *
+ */
+
 connman_service_t *connman_service_new(GVariant *variant)
 	{
 	connman_service_t *service = malloc(sizeof(connman_service_t));
@@ -260,6 +326,14 @@ connman_service_t *connman_service_new(GVariant *variant)
 	return service;
 }
 
+
+/**
+ * @brief  Free the connman service instance 
+ *
+ * @param  data
+ * @param  user_data
+ *
+ */
 
 void connman_service_free(gpointer data, gpointer user_data)
 {

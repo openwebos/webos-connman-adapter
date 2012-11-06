@@ -16,6 +16,12 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  connman_service.h
+ *
+ * @brief Header file defining functions and data structures for interacting with connman services
+ *
+ */
 
 #ifndef CONNMAN_SERVICE_H_
 #define CONNMAN_SERVICE_H_
@@ -70,13 +76,17 @@ enum {
 };
 
 
-gboolean is_service_type_wifi(connman_service_t *service);
-gboolean is_service_type_ethernet(connman_service_t *service);
-gchar *get_webos_state(int connman_state);
+extern gboolean connman_service_type_wifi(connman_service_t *service);
+extern gboolean connman_service_type_ethernet(connman_service_t *service);
+extern gchar *connman_service_get_webos_state(int connman_state);
+extern int connman_service_get_state(const gchar *state);
 
-int connman_service_get_state(const gchar *state);
-connman_service_t *connman_service_new(GVariant *variant);
-void connman_service_free (gpointer data, gpointer user_data);
+extern gboolean connman_service_connect(connman_service_t *service);
+extern gboolean connman_service_disconnect(connman_service_t *service);
+extern gboolean connman_service_get_ipinfo(connman_service_t *service);
+
+extern connman_service_t *connman_service_new(GVariant *variant);
+extern void connman_service_free (gpointer data, gpointer user_data);
 
 #endif /* CONNMAN_SERVICE_H_ */
 

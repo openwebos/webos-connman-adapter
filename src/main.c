@@ -16,6 +16,11 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  main.c
+ *
+ */
+
 
 #include <stdio.h>
 #include <unistd.h>
@@ -25,12 +30,9 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <stdlib.h>
-#include <cjson/json.h>
 #include <luna-service2/lunaservice.h>
 
 static GMainLoop *mainloop = NULL;
-static LSHandle* private_sh = NULL;
-static LSPalmService *psh = NULL;
 
 int initialize_wifi_ls2_calls();
 
@@ -43,7 +45,6 @@ term_handler(int signal)
 int
 main(int argc, char **argv)
 {
-    bool retVal;
 
     signal(SIGTERM, term_handler);
     signal(SIGINT, term_handler);

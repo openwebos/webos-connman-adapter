@@ -17,6 +17,13 @@
 * LICENSE@@@ */
 
 
+/**
+ * @file  connman_manager.h
+ *
+ * @brief Header file defining functions and data structures for interacting with connman manager
+ *
+ */
+
 #ifndef CONNMAN_MANAGER_H_
 #define CONNMAN_MANAGER_H_
 
@@ -34,14 +41,14 @@ typedef struct connman_manager
 	gboolean technologies_updated;
 }connman_manager_t;
 
-gboolean connman_manager_is_manager_available (connman_manager_t *manager);
-void connman_manager_update_services(connman_manager_t *manager);
-void connman_manager_update_technologies(connman_manager_t *manager);
+extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
+extern void connman_manager_update_services(connman_manager_t *manager);
+extern void connman_manager_update_technologies(connman_manager_t *manager);
 
-connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
-connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
-connman_manager_t *connman_manager_new(void);
-void connman_manager_free (connman_manager_t *manager);
+extern connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
+extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
+extern connman_manager_t *connman_manager_new(void);
+extern void connman_manager_free (connman_manager_t *manager);
 
 #endif /* CONNMAN_MANAGER_H_ */
 

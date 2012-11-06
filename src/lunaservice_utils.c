@@ -16,6 +16,14 @@
 *
 * LICENSE@@@ */
 
+
+/**
+ * @file lunaservice_utils.c
+ *
+ * @brief Convenience functions for sending luna error messages
+ *
+ */
+
 #include "lunaservice_utils.h"
 
 void

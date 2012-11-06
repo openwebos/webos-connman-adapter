@@ -17,6 +17,14 @@
 * LICENSE@@@ */
 
 
+/**
+ * @file  connman_technology.h
+ *
+ * @brief Header file defining functions and data structures for interacting with connman technologies
+ *
+ */
+
+
 #ifndef CONNMAN_TECHNOLOGY_H_
 #define CONNMAN_TECHNOLOGY_H_
 
@@ -34,11 +42,11 @@ typedef struct connman_technology
 	gboolean powered;
 }connman_technology_t;
 
-gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
-void connman_technology_scan_network(connman_technology_t *technology);
+extern gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
+extern gboolean connman_technology_scan_network(connman_technology_t *technology);
 
-connman_technology_t *connman_technology_new(GVariant *variant);
-void connman_technology_free (gpointer data, gpointer user_data);
+extern connman_technology_t *connman_technology_new(GVariant *variant);
+extern void connman_technology_free (gpointer data, gpointer user_data);
 
 #endif /* CONNMAN_TECHNOLOGY_H_ */
 

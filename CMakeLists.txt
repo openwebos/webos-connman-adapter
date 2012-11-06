@@ -17,7 +17,7 @@
 # LICENSE@@@
 
 #
-# pmwifiservice/CMakeLists.txt
+# webos-connman-adapter/CMakeLists.txt
 #
 
 
@@ -48,34 +48,40 @@ pkg_check_modules(GIO-UNIX REQUIRED gio-unix-2.0)
 include_directories(${GIO-UNIX_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${GIO-UNIX_CFLAGS_OTHER})
 
-pkg_check_modules(CJSON REQUIRED cjson)
-include_directories(${CJSON_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${CJSON_CFLAGS_OTHER})
+pkg_check_modules(PBNJSON_C REQUIRED pbnjson_c)
+include_directories(${PBNJSON_C_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${PBNJSON_C_CFLAGS_OTHER})
 
 webos_add_compiler_flags(ALL -Wall)
 
 webos_add_linker_options(ALL --no-undefined)
 
-include_directories(src)
+set(GDBUS_IF_DIR ${WEBOS_BINARY_CONFIGURED_DIR}/src)
+
+file (MAKE_DIRECTORY ${GDBUS_IF_DIR})
 
 execute_process(COMMAND ${GDBUS_CODEGEN_EXECUTABLE} --c-namespace ConnmanInterface --generate-c-code 
-			${CMAKE_CURRENT_SOURCE_DIR}/src/connman-interface --interface-prefix net.connman. 
+			${GDBUS_IF_DIR}/connman-interface --interface-prefix net.connman. 
 			${CMAKE_CURRENT_SOURCE_DIR}/files/xml/connman.xml
 	                RESULT_VARIABLE codegen_failed)
 if(codegen_failed)
 		message(FATAL_ERROR "Error in generating code for connman interface using gdbus-codegen")
 endif()
 
-file(GLOB SOURCE_FILES src/*.c)
+include_directories(src ${GDBUS_IF_DIR})
+
+file(GLOB SOURCE_FILES src/*.c ${GDBUS_IF_DIR}/connman-interface.c)
 
 add_executable(webos-connman-adapter ${SOURCE_FILES})
 target_link_libraries(webos-connman-adapter
                         ${GLIB2_LDFLAGS}
                         ${LUNASERVICE2_LDFLAGS}
                         ${GIO-UNIX_LDFLAGS}
-			${CJSON_LDFLAGS}
+			${PBNJSON_C_LDFLAGS}
                         rt
                         pthread)
 
 webos_build_daemon()
 webos_build_system_bus_files()
+
+webos_config_build_doxygen(doc Doxyfile)

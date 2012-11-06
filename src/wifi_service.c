@@ -16,14 +16,24 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  wifi_service.c
+ *
+ * @brief Implements all of the com.palm.wifi methods using connman APIs
+ * in the backend
+ *
+ */
+
+
 #include <glib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <string.h>
-#include <lunaservice_utils.h>
+#include <pbnjson.h>
 
 #include "wifi_service.h"
 #include "connman_manager.h"
+#include "lunaservice_utils.h"
 
 
 bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* context);
@@ -35,7 +45,7 @@ bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void* conte
 bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context);
 
 /**
- * WiFi Service Luna Method Table
+ * com.palm.wifi service Luna Method Table
  */
 
 LSMethod wifi_methods[] = {
@@ -55,7 +65,13 @@ LSHandle *pLsPublicHandle;
 
 connman_manager_t *manager = NULL;
 
+/* Constant for mapping access point signal strength to signal levels ( 1 to 5) */
 #define MAX_SIGNAL_BARS         5
+
+/**
+ *  @brief Returns true if wifi technology is powered on
+ *  
+ */
 
 gboolean is_wifi_powered(void)
 {
@@ -63,11 +79,24 @@ gboolean is_wifi_powered(void)
 	return technology->powered;
 }
 
+/**
+ *  @brief Sets the wifi technologies powered state
+ *  
+ *  @param state
+ */
 
 gboolean set_wifi_state(bool state)
 {
 	return connman_technology_set_powered(connman_manager_find_wifi_technology(manager),state);
 }
+
+/**
+ *  @brief Check if the wifi technology is available
+ *   Send a luna message if its not available
+ *
+ *  @param sh
+ *  @param message
+ */
 
 gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 {
@@ -78,6 +107,15 @@ gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 	}
 	return true;
 }
+
+/**
+ *  @brief Check if the connman manager is not in offline mode
+ *   Send a luna message if it is
+ *
+ *  @param sh
+ *  @param message
+ */
+
 
 gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 {
@@ -90,37 +128,66 @@ gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 }
 
 /**
- * Handler for "setstate" command.
+ *  @brief Handler for "setstate" command.
+ *  Enable/disable the wifi service
+ *  
+ *  JSON format:
+ *  luna://com.palm.wifi/setstate {"state":"enabled"}
+ *  
+ *  @param sh
+ *  @param message
+ *  @param context
  *
- * JSON format:
- * luna://com.palm.wifi/setstate {"state":"enabled"}
  */
+
 bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context)
 {
-	struct json_object *object = json_tokener_parse(
-                                    LSMessageGetPayload(message));
-	if (is_error(object))
-	{
+	if(!connman_status_check(sh, message))
+		return true;
+
+	if(!wifi_technology_status_check(sh, message))
+		return true;
+
+	jvalue_ref parsedObj = {0};
+	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!input_schema)
+		return false;
+
+    	JSchemaInfo schemaInfo;
+    	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+    	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+    	jschema_release(&input_schema);
+
+	if (jis_null(parsedObj)) {
         	LSMessageReplyErrorBadJSON(sh, message);
         	goto cleanup;
     	}
-	
-	if(!connman_status_check(sh, message))
-		goto cleanup;
 
-	if(!wifi_technology_status_check(sh, message))
-		goto cleanup;
 
-	char *state = json_object_get_string(
-               json_object_object_get(object, "state"));
-
-	if(strncmp(state,"enabled",sizeof(state)) && strncmp(state,"disabled",sizeof(state))) 
+	jvalue_ref stateObj = {0};
+	gboolean enable_wifi = FALSE;
+	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("state"), &stateObj))
 	{
-        	LSMessageReplyErrorBadJSON(sh, message);
-        	goto cleanup;
-	}		
-	
-	bool enable_wifi = !strncmp(state,"enabled",sizeof(state))?true:false;
+		if (jstring_equal2(stateObj, J_CSTR_TO_BUF("enabled")))
+		{
+			enable_wifi = TRUE;
+		}
+		else if (jstring_equal2(stateObj, J_CSTR_TO_BUF("disabled")))
+		{
+			enable_wifi = FALSE;
+
+		}
+		else
+		{
+        		LSMessageReplyErrorBadJSON(sh, message);
+        		goto cleanup;
+		}		
+	}
+
+	/*
+	 *  Check if we are enabling an already enabled service, 
+	 *  or disabling an already disabled service
+	 */
 
 	if(enable_wifi && is_wifi_powered()) 
 	{
@@ -136,17 +203,24 @@ bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context)
 	set_wifi_state(enable_wifi);
 	
 	LSMessageReplySuccess(sh,message);
-cleanup:
 
-	if (!is_error(object)) json_object_put(object);
+cleanup:
+	j_release(&parsedObj);
 	return true;
 
 }
+
+/**
+ *  @brief Connect to a access point with the given ssid
+ *
+ *  @param ssid 
+ */
 
 bool connect_wifi_with_ssid(const char *ssid)
 {
  	GSList *ap;
 
+	/* Look up for the service with the given ssid */
         for (ap = manager->services; ap; ap = ap->next)
         {
                 connman_service_t *service = (connman_service_t *)(ap->data);
@@ -165,7 +239,7 @@ bool connect_wifi_with_ssid(const char *ssid)
 			}					
 			else
 			{
-				g_error("Error in connecting");
+				g_message("Error in connecting");
 				return false;
 			}		
 		}
@@ -173,139 +247,188 @@ bool connect_wifi_with_ssid(const char *ssid)
 	return false;
 }
 
+
 /**
- * Handler for "connectprofile" command.
+ *  @brief Handler for "connect" command.
+ *  Connect to a wifi access point with its ssid or its profile Id 
+ *  
+ *  JSON format:
+ *  luna://com.palm.wifi/connect '{"ssid":"<Name of the access point>"}'
+ *  luna://com.palm.wifi/connect '{"profileId":<Profile ID>}'`
+ * 
+ *  @param sh
+ *  @param message
+ *  @param context
  *
- * JSON format:
- * luna://com.palm.wifi/connectprofile {"profileId":888}
  */
+
 bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
 {
-	struct json_object *object = json_tokener_parse(LSMessageGetPayload(message));
-        if (is_error(object))
-        {
+	if(!connman_status_check(sh, message))
+		return true;
+
+	if(!wifi_technology_status_check(sh, message))
+		return true;
+
+        if(!is_wifi_powered()) {
+                LSMessageReplyCustomError(sh,message,"WiFi switched off");
+		return true;
+	}
+
+	/* Update services in case the "services_changed" signal was triggered
+	 * which will happen if a new service was added, or existing service
+	 * was modified, or a service was removed 
+         */
+	connman_manager_update_services(manager);
+
+	jvalue_ref parsedObj = {0};
+        jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+        if(!input_schema)
+                return false;
+
+        JSchemaInfo schemaInfo;
+        jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+        parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+        jschema_release(&input_schema);
+
+        if (jis_null(parsedObj)) {
                 LSMessageReplyErrorBadJSON(sh, message);
                 goto cleanup;
         }
 
-	if(!connman_status_check(sh, message))
-		goto cleanup;
 
-	if(!wifi_technology_status_check(sh, message))
-		goto cleanup;
+        jvalue_ref ssidObj = {0};
 
-        if(!is_wifi_powered()) {
-                LSMessageReplyCustomError(sh,message,"WiFi switched off");
-		goto cleanup;
-	}
-
-	connman_manager_update_services(manager);
-
-        char *ssid = json_object_get_string(
-               json_object_object_get(object, "ssid"));
-
-	if(ssid)
+	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("ssid"), &ssidObj))
 	{
+		raw_buffer ssid_buf = jstring_get(ssidObj);
+		char *ssid = g_strdup(ssid_buf.m_str);
 		if(connect_wifi_with_ssid(ssid))
-        		LSMessageReplySuccess(sh, message);
-		else
-        		LSMessageReplyErrorUnknown(sh, message);
-
+                        LSMessageReplySuccess(sh, message);
+                else
+                        LSMessageReplyErrorUnknown(sh, message);
+		g_free(ssid);
 	}
-	
+
 cleanup:
-	if (!is_error(object)) json_object_put(object);
+	j_release(&parsedObj);
 	return true;
 }
 
-void add_service(connman_service_t *service, struct json_object *network_json)
+/**  @brief Add details about the given service representing a wifi access point
+ *  
+ *  @param service
+ *  @param network
+ *
+ */
+ 
+void add_service(connman_service_t *service, jvalue_ref *network)
 {
-	struct json_object *security_list;
-
 	if(service->name != NULL)	
-		json_object_object_add(network_json,"ssid",json_object_new_string(service->name));
+		jobject_put(*network, J_CSTR_TO_JVAL("ssid"), jstring_create(service->name));
 
 	if((service->security != NULL) && g_strv_length(service->security))
 	{
 		gsize i;
-		security_list = json_object_new_array();
+		jvalue_ref security_list = jarray_create(NULL);
 		for (i = 0; i < g_strv_length(service->security); i++)
 		{
-			json_object_array_add(security_list, json_object_new_string(service->security[i]));
+			jarray_append(security_list, jstring_create(service->security[i]));
 		}
-		json_object_object_add(network_json, "availableSecurityTypes", security_list);
-	
+		jobject_put(*network, J_CSTR_TO_JVAL("availableSecurityTypes"),security_list);
 	}
 
 	int signalbars = (service->strength * MAX_SIGNAL_BARS) / 100;
 
-	json_object_object_add(network_json, "signalBars",json_object_new_int(signalbars));
-	json_object_object_add(network_json, "signalLevel", json_object_new_int(service->strength));
+	jobject_put(*network, J_CSTR_TO_JVAL("signalBars"),jnumber_create_i32(signalbars));
+	jobject_put(*network, J_CSTR_TO_JVAL("signalLevel"),jnumber_create_i32(service->strength));
 
 	if(service->state != NULL) 
 	{
 		if(connman_service_get_state(service->state) != CONNMAN_SERVICE_STATE_IDLE)
 		{
-			json_object_object_add(network_json, "connectState",
-        	       	json_object_new_string(get_webos_state(connman_service_get_state(service->state))));		
+			jobject_put(*network, J_CSTR_TO_JVAL("connectState"),jstring_create(connman_service_get_webos_state(connman_service_get_state(service->state)))); 
 		}
 	}
 }
 
+/**
+ *  @brief Populate information about all the found networks
+ *
+ *  @param sh
+ *  @param message
+ *
+ */
+
 void populate_wifi_networks(LSHandle *sh, LSMessage *message)
 {
-	struct json_object *reply;
-	struct json_object *network_list_json, *network_json;
 	bool networks_found = false;  
 	LSError lserror;
-	
-	reply = json_object_new_object();	
-	network_list_json = json_object_new_array();
+
+	jvalue_ref reply = jobject_create();
+	jvalue_ref network_list = jarray_create(NULL);
+
 	GSList *ap;
 
 	connman_manager_update_services(manager);
+
+	/* Go through the manager's services list and fill in details 
+	   for each one of them */
 	
 	for (ap = manager->services; ap; ap = ap->next)
 	{
+		jvalue_ref network = jobject_create();
 		connman_service_t *service = (connman_service_t *)(ap->data);
-		if(!is_service_type_wifi(service) || (service->name == NULL))
+		if(!connman_service_type_wifi(service) || (service->name == NULL))
 			continue;
- 		network_json = json_object_new_object();
-		add_service(service, network_json);
+		add_service(service, &network);
 		
-		struct json_object *network_info_json = json_object_new_object();
-		json_object_object_add(network_info_json,"networkInfo",network_json);
-		json_object_array_add(network_list_json, network_info_json);
+		jvalue_ref network_list_j = jobject_create();
+		jobject_put(network_list_j, J_CSTR_TO_JVAL("networkInfo"), network);
+		jarray_append(network_list, network_list_j);
+		
 		networks_found = true;
         }
 
 	if(networks_found)
 	{
-		json_object_object_add(reply, "returnValue", json_object_new_boolean(true));
-		json_object_object_add(reply, "foundNetworks", network_list_json);
+		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+		jobject_put(reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
 
-	    	if (!LSMessageReply(sh, message, json_object_to_json_string(reply), &lserror)) {
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(!response_schema) {
+	                LSMessageReplyErrorUnknown(sh,message);
+			return;
+	    	}
+		if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
 		        LSErrorPrint(&lserror, stderr);
 		        LSErrorFree(&lserror);
     		}
+		jschema_release(&response_schema);
 	}
 	else
         	LSMessageReplySuccess(sh, message);
-cleanup:
-	json_object_put(reply);
+	
+	j_release(&reply);
 }
 
 /**
- * Handler for "findnetworks" command.
+ *  @brief Handler for "findnetworks" command.
+ *  Scan for all the available access points and list their info like ssid name, 
+ *  available security types, signal strength, connection status
+ *  
+ *  JSON format:
+ *  luna://com.palm.wifi/findnetworks {}
+ *  luna://com.palm.wifi/findnetworks {"subscribe":true}
+ *  
+ *  @param sh
+ *  @param message
+ *  @param context
  *
- * JSON format:
- * luna://com.palm.wifi/findnetworks {}
- * luna://com.palm.wifi/findnetworks {"subscribe":true}
  */
+
 bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 {
-	GError *error = NULL;
-
 	if(!connman_status_check(sh, message))
 		goto cleanup;
 
@@ -325,101 +448,121 @@ bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
                 goto cleanup;
         }
 
+	/* Scan the network for all available access points by making a connman call*/
         connman_technology_scan_network(wifi_tech);
 
+	/* Fill in details of all the found wifi networks */
 	populate_wifi_networks(sh, message);	
 cleanup:
 	return true;
 }
 
-void add_connected_network_status(struct json_object *reply, connman_service_t *connected_service)
+ /**
+  *  @brief Add details about the connected service
+  * 
+  *  @param reply
+  *  @param connected_service
+  *
+  */
+
+void add_connected_network_status(jvalue_ref *reply, connman_service_t *connected_service)
 {
-	struct json_object *networkinfo_json, *ipinfo_json;
-	int connman_state;
+	int connman_state = 0;
+	jobject_put(*reply, J_CSTR_TO_JVAL("status"), jstring_create("connectionStateChanged"));
 
-	json_object_object_add(reply, "status", json_object_new_string("connectionStateChanged"));
+    	jvalue_ref network_info = jobject_create();	
 
-    	networkinfo_json = json_object_new_object();	
-
+	/* Fill in details about the service access point */
 	if(connected_service->name != NULL)
-		json_object_object_add(networkinfo_json, "ssid",json_object_new_string(connected_service->name));
+		jobject_put(network_info, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
+
 	if(connected_service->state != NULL)
 	{
 		connman_state = connman_service_get_state(connected_service->state);
-        	json_object_object_add(networkinfo_json, "connectState",
-        		json_object_new_string(get_webos_state(connman_state)));   
+		jobject_put(network_info, J_CSTR_TO_JVAL("connectState"), jstring_create(connman_service_get_webos_state(connman_state)));
 	}
 
-	json_object_object_add(networkinfo_json, "signalBars",
-	json_object_new_int((connected_service->strength * MAX_SIGNAL_BARS) / 100));
-	json_object_object_add(networkinfo_json, "signalLevel", json_object_new_int(connected_service->strength));
+	jobject_put(network_info, J_CSTR_TO_JVAL("signalBars"), jnumber_create_i32((connected_service->strength * MAX_SIGNAL_BARS) / 100)); 
+	jobject_put(network_info, J_CSTR_TO_JVAL("signalLevel"), jnumber_create_i32(connected_service->strength)); 
+	
+	jobject_put(*reply,  J_CSTR_TO_JVAL("networkInfo"), network_info);
 
-	json_object_object_add(reply, "networkInfo", networkinfo_json);
-
+	/* Fill in ip information only for a service which is online (fully connected) */
 	if(connman_state == CONNMAN_SERVICE_STATE_ONLINE)
 	{
 		connman_service_get_ipinfo(connected_service);
-		
-		ipinfo_json = json_object_new_object();
+		jvalue_ref ip_info = jobject_create();	
 
-        	json_object_object_add(ipinfo_json, "interface", json_object_new_string(connected_service->ipinfo.iface));
-        	json_object_object_add(ipinfo_json, "ip", json_object_new_string(connected_service->ipinfo.address));
-        	json_object_object_add(ipinfo_json, "subnet", json_object_new_string(connected_service->ipinfo.netmask));
-        	json_object_object_add(ipinfo_json, "gateway", json_object_new_string(connected_service->ipinfo.gateway));
+		jobject_put(ip_info, J_CSTR_TO_JVAL("interface"), jstring_create(connected_service->ipinfo.iface));
+		jobject_put(ip_info, J_CSTR_TO_JVAL("ip"), jstring_create(connected_service->ipinfo.address));
+		jobject_put(ip_info, J_CSTR_TO_JVAL("subnet"), jstring_create(connected_service->ipinfo.netmask));
+		jobject_put(ip_info, J_CSTR_TO_JVAL("gateway"), jstring_create(connected_service->ipinfo.gateway));
 
 		gsize i;
-		gchar dns_str[16];
+		char dns_str[16];
 		for (i = 0; i < g_strv_length(connected_service->ipinfo.dns); i++)
 		{
 			sprintf(dns_str,"dns%d",i+1);
-			json_object_object_add(ipinfo_json, dns_str, json_object_new_string(connected_service->ipinfo.dns[i]));
+			jobject_put(ip_info, jstring_create(dns_str), jstring_create(connected_service->ipinfo.dns[i]));
 		}
 
-        	json_object_object_add(reply, "ipInfo", ipinfo_json);
+		jobject_put(*reply,  J_CSTR_TO_JVAL("ipInfo"), ip_info);
         }
 }
 
 
 /**
- * Handler for "getstatus" command.
+ *  @brief Handler for "getstatus" command.
+ *  Get the current wifi connection status, details of the access point if connected to one,
+ *  and the ip related info like address, gateway, dns if the service is online
+ * 
+ *  JSON format:
  *
- * JSON format:
+ *  luna://com.palm.wifi/getstatus {}
+ *  luna://com.palm.wifi/getstatus {"subscribe":true}
  *
- * luna://com.palm.wifi/getstatus {}
- * luna://com.palm.wifi/getstatus {"subscribe":true}
+ *  @param sh
+ *  @param message
+ *  @param context
  */
+
 bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
 {
-	struct json_object *reply;
+	jvalue_ref reply = jobject_create();
 	LSError lserror;
 	LSErrorInit(&lserror);
 
 	if(!connman_status_check(sh, message))
-		goto done;
+		return true;
 
 	if(!wifi_technology_status_check(sh, message))
-		goto done;
+		return true;
 
-	reply = json_object_new_object();
-    	json_object_object_add(reply, "returnValue", json_object_new_boolean(true));
-	json_object_object_add(reply, "wakeOnWlan", json_object_new_string("disabled"));
-	json_object_object_add(reply, "status",
-        json_object_new_string(is_wifi_powered() ? "serviceEnabled" : "serviceDisabled"));
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));    	
+	jobject_put(reply, J_CSTR_TO_JVAL("wakeOnWlan"), jstring_create("disabled"));    	
+	jobject_put(reply, J_CSTR_TO_JVAL("status"), jstring_create(is_wifi_powered() ? "serviceEnabled" : "serviceDisabled"));    	
 
 	connman_manager_update_services(manager);
+	/* Get the service which is connecting or already in connected state */
 	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
 	if(connected_service != NULL)
 	{
-		add_connected_network_status(reply, connected_service);
+		add_connected_network_status(&reply, connected_service);
 	}
 
-    	if (!LSMessageReply(sh, message, json_object_to_json_string(reply), &lserror)) {
+	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!response_schema) {
+		LSMessageReplyErrorUnknown(sh,message);
+		return;
+	}
+	
+	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
         	LSErrorPrint(&lserror, stderr);
         	LSErrorFree(&lserror);
     	}
 
-    	json_object_put(reply);
-done:
+    	j_release(&reply);
+	jschema_release(&response_schema);
     	return true;
 }
 
@@ -451,11 +594,16 @@ bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
  * JSON format:
  * luna://com.palm.wifi/deleteprofile {"profileId":888}
  */
+
 bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	return true;
 }
 
+/** 
+ *  @brief Initialize com.palm.wifi service and all of its methods
+ *  Also initialize a manager instance
+ */
 
 int initialize_wifi_ls2_calls( GMainLoop *mainloop ) 
 {
@@ -496,6 +644,9 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 
 	g_type_init();
 
+	/* We just need one manager instance that stays throughout the lifetime 	   
+           of this daemon. Only its technologies and services lists are updated
+	   whenever the corresponding signals are received */
 	manager = connman_manager_new();
 	if(manager == NULL)
 	{
@@ -530,8 +681,5 @@ Exit:
                 	        LSErrorFree(&lserror);
                         }
         }
-
 	return -1;
 }
-
-

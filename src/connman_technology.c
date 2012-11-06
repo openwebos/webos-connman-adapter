@@ -16,8 +16,24 @@
 *
 * LICENSE@@@ */
 
+
+/**
+ * @file connman_technology.c
+ *
+ * @brief Connman technology interface
+ *
+ */
+
 #include "connman-interface.h"
 #include "connman_technology.h"
+
+/**
+ * @brief  Power on/off the given technology  
+ *
+ * @param  technology
+ * @param  state
+ *
+ */
 
 gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state)
 {
@@ -38,7 +54,14 @@ gboolean connman_technology_set_powered(connman_technology_t *technology, gboole
 	return TRUE;
 }
 
-void connman_technology_scan_network(connman_technology_t *technology)
+/**
+ * @brief  Scan the network for available services
+ *
+ * @param  technology
+ *
+ */
+
+gboolean connman_technology_scan_network(connman_technology_t *technology)
 {
 	GError *error = NULL;
 
@@ -49,7 +72,15 @@ void connman_technology_scan_network(connman_technology_t *technology)
 		g_error_free(error);
 		return FALSE;
 	}
+	return TRUE;
 }
+
+/**
+ * @brief  Create a new technology instance and set its properties
+ *
+ * @param  variant
+ *
+ */
 
 connman_technology_t *connman_technology_new(GVariant *variant)
 {
@@ -103,6 +134,14 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 
 	return technology;
 }
+
+/**
+ * @brief  Free the technology instance
+ *
+ * @param  data
+ * @param  user_data
+ *
+ */
 
 void connman_technology_free(gpointer data, gpointer user_data)
 {

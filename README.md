@@ -21,9 +21,9 @@ Below are the tools and libraries (and their minimum versions) required to build
 * gio-unix-2.0 2.32.4
 * glib-2.0 2.32.4
 * make (any version)
-* openwebos/cjson 1.8.0
 * openwebos/cmake-modules-webos 1.0.0 RC4
 * openwebos/luna-service2 3.0.0
+* openwebos/pbnjson_c 1.3.0
 * pkg-config 0.26
 
 ## Building

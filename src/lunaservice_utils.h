@@ -17,16 +17,23 @@
 * LICENSE@@@ */
 
 
+/**
+ * @file lunaservice_utils.h
+ *
+ * @brief Header file defining convenience functions for sending luna error messages
+ *
+ */
+
+
 #ifndef __LUNASERVICE_UTILS_H__
 #define __LUNASERVICE_UTILS_H__
 
-#include <cjson/json.h>
 #include <luna-service2/lunaservice.h>
 
-void LSMessageReplyErrorUnknown(LSHandle *sh, LSMessage *message);
-void LSMessageReplyErrorInvalidParams(LSHandle *sh, LSMessage *message);
-void LSMessageReplyErrorBadJSON(LSHandle *sh, LSMessage *message);
-void LSMessageReplyCustomError(LSHandle *sh, LSMessage *message, const char *errormsg);
-void LSMessageReplySuccess(LSHandle *sh, LSMessage *message);
+extern void LSMessageReplyErrorUnknown(LSHandle *sh, LSMessage *message);
+extern void LSMessageReplyErrorInvalidParams(LSHandle *sh, LSMessage *message);
+extern void LSMessageReplyErrorBadJSON(LSHandle *sh, LSMessage *message);
+extern void LSMessageReplyCustomError(LSHandle *sh, LSMessage *message, const char *errormsg);
+extern void LSMessageReplySuccess(LSHandle *sh, LSMessage *message);
 
 #endif

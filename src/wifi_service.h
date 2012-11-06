@@ -16,6 +16,11 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  wifi_service.h
+ *
+ */
+
 
 #ifndef _WIFI_SERVICE_H_
 #define _WIFI_SERVICE_H_
