@@ -27,26 +27,30 @@
 #ifndef CONNMAN_MANAGER_H_
 #define CONNMAN_MANAGER_H_
 
+#include "connman_common.h"
 #include "connman_service.h"
 #include "connman_technology.h"
 
 #define CONNMAN_WIFI_INTERACE_NAME	"wlan0"
+
+typedef void (*connman_services_changed_cb)(gpointer);
 
 typedef struct connman_manager
 {
 	ConnmanInterfaceManager	*remote;
 	GSList	*services;
 	GSList	*technologies;	
-	gboolean services_updated;
-	gboolean technologies_updated;
+	connman_property_changed_cb	handle_property_change_fn;
+	connman_services_changed_cb	handle_services_change_fn;
 }connman_manager_t;
 
-extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
-extern void connman_manager_update_services(connman_manager_t *manager);
-extern void connman_manager_update_technologies(connman_manager_t *manager);
 
+extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
 extern connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
 extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
+extern void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);
+extern void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func);
+
 extern connman_manager_t *connman_manager_new(void);
 extern void connman_manager_free (connman_manager_t *manager);
 

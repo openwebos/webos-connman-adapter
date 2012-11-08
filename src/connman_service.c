@@ -23,7 +23,6 @@
  *
  */
 
-#include "connman-interface.h"
 #include "connman_service.h"
 
 /**
@@ -35,6 +34,8 @@
 
 gboolean connman_service_type_wifi(connman_service_t *service)
 {
+	if(NULL == service)
+		return FALSE;
 	return service->type == CONNMAN_SERVICE_TYPE_WIFI;
 }
 
@@ -47,6 +48,8 @@ gboolean connman_service_type_wifi(connman_service_t *service)
 
 gboolean connman_service_type_ethernet(connman_service_t *service)
 {
+	if(NULL == service)
+		return FALSE;
 	return service->type == CONNMAN_SERVICE_TYPE_ETHERNET;
 }
 
@@ -90,6 +93,9 @@ gchar *connman_service_get_webos_state(int connman_state)
 int connman_service_get_state(const gchar *state)
 {
 	int result = CONNMAN_SERVICE_STATE_IDLE;
+	
+	if(NULL == state)
+		return result;
 
 	if (g_str_equal(state, "idle"))
 		result = CONNMAN_SERVICE_STATE_IDLE;
@@ -118,6 +124,9 @@ int connman_service_get_state(const gchar *state)
 
 gboolean connman_service_connect(connman_service_t *service)
 {
+	if(NULL == service)
+		return FALSE;
+
 	GError *error = NULL;
 
 	connman_interface_service_call_connect_sync(service->remote, NULL, &error);
@@ -140,6 +149,9 @@ gboolean connman_service_connect(connman_service_t *service)
 
 gboolean connman_service_disconnect(connman_service_t *service)
 {
+	if(NULL == service)
+		return FALSE;
+
 	GError *error = NULL;
 
 	connman_interface_service_call_disconnect_sync(service->remote, NULL, &error);
@@ -162,6 +174,9 @@ gboolean connman_service_disconnect(connman_service_t *service)
 
 gboolean connman_service_get_ipinfo(connman_service_t *service)
 {
+	if(NULL == service)
+		return FALSE;
+
 	GError *error = NULL;
 	GVariant *properties;
 	gsize i;
@@ -242,44 +257,47 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 
 
 /**
- * @brief  Create a new connman service instance and set its properties
+ * @brief  Callback for service's "property_changed" signal
  *
- * @param  variant
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  service
  *
  */
 
-connman_service_t *connman_service_new(GVariant *variant)
-	{
-	connman_service_t *service = malloc(sizeof(connman_service_t));
-	if(service == NULL)
-	{
-		g_error("Out of memory !!!");
-		return NULL;
-	}
+static void
+property_changed_cb(ConnmanInterfaceService *proxy, gchar * property, GVariant *v,
+              connman_service_t      *service)
+{
+        if(NULL != service->handle_property_change_fn)
+                (service->handle_property_change_fn)((gpointer)service, property, v);
+}
 
-	memset(service, 0, sizeof(connman_service_t));
-	service->path = service->name = service->state = NULL;
-	GVariant *service_v = g_variant_get_child_value(variant, 0);
+
+void connman_service_register_property_changed_cb(connman_service_t *service, connman_property_changed_cb func)
+{
+	if(NULL == func)
+		return;
+        service->handle_property_change_fn = func;
+}
+
+
+/**
+ * @brief Update service properties from the supplied variant
+ *
+ * @param service_v
+ */
+
+void connman_service_update_properties(connman_service_t *service, GVariant *service_v)
+{
+	if(NULL == service || NULL == service_v)
+		return;
+
 	GVariant *properties;
 	gsize i;
-	GError *error = NULL;
-
-	service->path = g_variant_dup_string(service_v, NULL);
-
-	service->remote = connman_interface_service_proxy_new_for_bus_sync(G_BUS_TYPE_SYSTEM,
-								G_DBUS_PROXY_FLAGS_NONE,
-								"net.connman",
-								service->path,
-								NULL,
-								&error);
-	if (error)
-	{
-		g_error("%s", error->message);
-		g_error_free(error);
-		return NULL;
-	}
-
-	properties = g_variant_get_child_value(variant, 1);
+	
+	properties = g_variant_get_child_value(service_v, 1);
 
 	for (i = 0; i < g_variant_n_children(properties); i++)
 	{
@@ -322,6 +340,55 @@ connman_service_t *connman_service_new(GVariant *variant)
 			service->favorite = g_variant_get_boolean(val);
 
 	}
+}
+
+/**
+ * @brief  Create a new connman service instance and set its properties
+ *
+ * @param  variant
+ *
+ */
+
+connman_service_t *connman_service_new(GVariant *variant)
+{
+	if(NULL == variant)
+		return NULL;
+	
+	connman_service_t *service = malloc(sizeof(connman_service_t));
+	if(service == NULL)
+	{
+		g_error("Out of memory !!!");
+		return NULL;
+	}
+
+	memset(service, 0, sizeof(connman_service_t));
+	service->path = service->name = service->state = NULL;
+	
+	GVariant *service_v = g_variant_get_child_value(variant, 0);
+	service->path = g_variant_dup_string(service_v, NULL);
+	
+	GError *error = NULL;
+
+
+	service->remote = connman_interface_service_proxy_new_for_bus_sync(G_BUS_TYPE_SYSTEM,
+								G_DBUS_PROXY_FLAGS_NONE,
+								"net.connman",
+								service->path,
+								NULL,
+								&error);
+	if (error)
+	{
+		g_error("%s", error->message);
+		g_error_free(error);
+		return NULL;
+	}
+
+	service->handle_property_change_fn = NULL;
+	
+	g_signal_connect(G_OBJECT(service->remote), "property-changed",
+		G_CALLBACK(property_changed_cb), service);
+
+	connman_service_update_properties(service, variant);
 
 	return service;
 }
@@ -339,27 +406,18 @@ void connman_service_free(gpointer data, gpointer user_data)
 {
 	connman_service_t *service = (connman_service_t *)data;
 
-	if(service == NULL)
-	return;
+	if(NULL == service)
+		return;
 
-	if(service->path)
-		g_free(service->path);
-	if(service->name)
-		g_free(service->name);
-	if(service->state)
-		g_free(service->state);
-	if(service->security)
-		g_strfreev(service->security);
-	if(service->ipinfo.iface)
-		g_free(service->ipinfo.iface);
-	if(service->ipinfo.address)
-		g_free(service->ipinfo.address);
-	if(service->ipinfo.netmask)
-		g_free(service->ipinfo.netmask);
-	if(service->ipinfo.gateway)
-		g_free(service->ipinfo.gateway);
-	if(service->ipinfo.dns)
-		g_strfreev(service->ipinfo.dns);
+	g_free(service->path);
+	g_free(service->name);
+	g_free(service->state);
+	g_strfreev(service->security);
+	g_free(service->ipinfo.iface);
+	g_free(service->ipinfo.address);
+	g_free(service->ipinfo.netmask);
+	g_free(service->ipinfo.gateway);
+	g_strfreev(service->ipinfo.dns);
 
 	free(service);
 	service = NULL;

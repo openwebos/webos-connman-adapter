@@ -24,7 +24,6 @@
  *
  */
 
-#include "connman-interface.h"
 #include "connman_technology.h"
 
 /**
@@ -37,6 +36,9 @@
 
 gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state)
 {
+	if(NULL == technology)
+		return FALSE;
+
 	GError *error = NULL;
 
 	connman_interface_technology_call_set_property_sync(technology->remote,
@@ -63,6 +65,9 @@ gboolean connman_technology_set_powered(connman_technology_t *technology, gboole
 
 gboolean connman_technology_scan_network(connman_technology_t *technology)
 {
+	if(NULL == technology)
+		return FALSE;
+
 	GError *error = NULL;
 
 	connman_interface_technology_call_scan_sync(technology->remote, NULL, &error);
@@ -76,6 +81,34 @@ gboolean connman_technology_scan_network(connman_technology_t *technology)
 }
 
 /**
+ * @brief  Callback for technology's "property_changed" signal
+ *
+ * @param  proxy
+ * @param  property
+ * @param  v
+ * @param  technology
+ *
+ */
+
+static void
+property_changed_cb(ConnmanInterfaceTechnology *proxy,const gchar * property, GVariant *v,
+              connman_technology_t      *technology)
+{
+	if(NULL != technology->handle_property_change_fn)
+                (technology->handle_property_change_fn)((gpointer)technology, property, v);
+}
+
+
+void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func)
+{
+	if(NULL == func)
+		return;
+
+	technology->handle_property_change_fn = func;
+}
+
+
+/**
  * @brief  Create a new technology instance and set its properties
  *
  * @param  variant
@@ -84,6 +117,9 @@ gboolean connman_technology_scan_network(connman_technology_t *technology)
 
 connman_technology_t *connman_technology_new(GVariant *variant)
 {
+	if(NULL == variant)
+		return NULL;
+
 	connman_technology_t *technology = malloc(sizeof(connman_technology_t));
 	if(technology == NULL)
 	{
@@ -110,6 +146,11 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 		g_error_free(error);
 		return NULL;
 	}
+
+	technology->handle_property_change_fn = NULL;
+
+	g_signal_connect(G_OBJECT(technology->remote), "property-changed",
+                   G_CALLBACK(property_changed_cb), technology);
 
 
 	properties = g_variant_get_child_value(variant, 1);
@@ -147,15 +188,12 @@ void connman_technology_free(gpointer data, gpointer user_data)
 {
 	connman_technology_t *technology = (connman_technology_t *)data;
 
-	if(technology == NULL)
+	if(NULL == technology)
 		return;
 	
-	if(technology->path)
-		g_free(technology->path);
-	if(technology->type)
-		g_free(technology->type);
-	if(technology->name)
-		g_free(technology->name);
+	g_free(technology->path);
+	g_free(technology->type);
+	g_free(technology->name);
 
 	free(technology);
 	technology = NULL;

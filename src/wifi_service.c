@@ -35,35 +35,12 @@
 #include "connman_manager.h"
 #include "lunaservice_utils.h"
 
+static void send_connection_status(jvalue_ref *reply);
+static bool populate_wifi_networks(jvalue_ref *reply);
 
-bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void* context);
-bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context);
+static LSHandle *pLsHandle, *pLsPublicHandle;
 
-/**
- * com.palm.wifi service Luna Method Table
- */
-
-LSMethod wifi_methods[] = {
-    { LUNA_METHOD_GETPROFILELIST,	handle_get_profile_command },
-    { LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
-    { LUNA_METHOD_GETINFO,		handle_get_info_command },
-    { LUNA_METHOD_SETSTATE,		handle_set_state_command },
-    { LUNA_METHOD_CONNECT,		handle_connect_command },
-    { LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
-    { LUNA_METHOD_DELETEPROFILE,	handle_delete_profile_command },
-    { LUNA_METHOD_GETSTATUS,		handle_get_status_command },
-    { },
-};
-
-LSHandle *pLsHandle;
-LSHandle *pLsPublicHandle;
-
-connman_manager_t *manager = NULL;
+static connman_manager_t *manager = NULL;
 
 /* Constant for mapping access point signal strength to signal levels ( 1 to 5) */
 #define MAX_SIGNAL_BARS         5
@@ -73,7 +50,7 @@ connman_manager_t *manager = NULL;
  *  
  */
 
-gboolean is_wifi_powered(void)
+static gboolean is_wifi_powered(void)
 {
 	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
 	return technology->powered;
@@ -85,22 +62,22 @@ gboolean is_wifi_powered(void)
  *  @param state
  */
 
-gboolean set_wifi_state(bool state)
+static gboolean set_wifi_state(bool state)
 {
 	return connman_technology_set_powered(connman_manager_find_wifi_technology(manager),state);
 }
 
 /**
  *  @brief Check if the wifi technology is available
- *   Send a luna message if its not available
+ *   Send an error luna message if its not available
  *
  *  @param sh
  *  @param message
  */
 
-gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
+static gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 {
-	if(!connman_manager_find_wifi_technology(manager))
+	if(NULL == connman_manager_find_wifi_technology(manager))
 	{
 		LSMessageReplyCustomError(sh, message, "WiFi technology unavailable");
 		return false;
@@ -110,14 +87,14 @@ gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 
 /**
  *  @brief Check if the connman manager is not in offline mode
- *   Send a luna message if it is
+ *   Send an error luna message if it is in offline mode
  *
  *  @param sh
  *  @param message
  */
 
 
-gboolean connman_status_check(LSHandle *sh, LSMessage *message)
+static gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 {
 	if(!connman_manager_is_manager_available(manager))
 	{
@@ -125,6 +102,143 @@ gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 		return false;
 	}
 	return true;
+}
+
+/**
+ *  @brief Callback function registered with connman manager whenever any of its properties change
+ *
+ *
+ *  @param data
+ *  @param property
+ *  @param value
+ */
+
+static void manager_property_changed_callback(gpointer data, const gchar *property, GVariant *value)
+{
+	/* Send getstatus method to all is subscribers whenever manager's state changes */
+	if(g_str_equal(property,"State"))
+	{
+		jvalue_ref reply = jobject_create();
+		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+		send_connection_status(&reply);
+
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(response_schema) {
+			const char *payload = jvalue_tostring(reply, response_schema);
+			g_message("Sending \n%s\n to subscribers",payload);
+			LSError lserror;
+			LSErrorInit(&lserror);
+			if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror)) {
+				LSErrorPrint(&lserror, stderr);
+				LSErrorFree(&lserror);
+			}
+			jschema_release(&response_schema);
+		}
+		j_release(&reply);
+	}
+}
+
+/**
+ *  @brief Callback function registered with connman manager whenever any of its services change
+ *  This would happen whenever any existing service is changed/deleted, or a new service is added
+ *
+ *  @param data
+ */
+
+static void manager_services_changed_callback(gpointer data)
+{
+	jvalue_ref reply = jobject_create();
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+	/* Send the latest WiFi network list to subscribers of 'findnetworks' method */
+	populate_wifi_networks(&reply);
+
+	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(response_schema) {
+		const char *payload = jvalue_tostring(reply, response_schema);
+			g_message("Sending \n%s\n to subscribers",payload);
+		LSError lserror;
+		LSErrorInit(&lserror);
+
+		if (!LSSubscriptionPost(pLsHandle, "/", "findnetworks", payload, &lserror)) {
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jschema_release(&response_schema);
+	}
+	j_release(&reply);
+
+}
+
+/**
+ *  @brief Callback function registered with connman technology whenever any of its properties change
+ *
+ *
+ *  @param data
+ *  @param property
+ *  @param value
+ */
+
+static void technology_property_changed_callback(gpointer data, const gchar *property, GVariant *value)
+{
+	connman_technology_t *technology = (connman_technology_t *)data;
+
+	if(NULL == technology)
+		return;
+
+	if(connman_manager_find_wifi_technology(manager) != technology)
+	{
+		g_message("Ignoring signals for non-wifi technologies");
+		return;
+	}
+	/* Need to send getstatus method to all its subscribers whenever the "powered" state
+	   of WiFi technology changes */
+
+	if(g_str_equal(property,"Powered"))
+	{
+		jvalue_ref reply = jobject_create();
+		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+		send_connection_status(&reply);
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(response_schema) {
+			const char *payload = jvalue_tostring(reply, response_schema);
+			g_message("Sending \n%s\n to subscribers",payload);
+			LSError lserror;
+
+			if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror)) {
+				LSErrorPrint(&lserror, stderr);
+				LSErrorFree(&lserror);
+			}
+			jschema_release(&response_schema);
+		}
+		j_release(&reply);
+	}
+}
+
+/**
+ *  @brief Callback function registered with connman service whenever any of its properties change
+ *
+ *
+ *  @param data
+ *  @param property
+ *  @param value
+ */
+
+static void service_property_changed_callback(gpointer data, const gchar *property, GVariant *value)
+{
+	connman_service_t *service = (connman_service_t *)data;
+	if(NULL == service)
+		return;
+
+	if(g_str_equal(property,"State"))
+	{
+		g_free(service->state);
+		/* Update service->state so that 'getstatus' method sends the correct values */
+		service->state = g_variant_dup_string(g_variant_get_variant(value), NULL);
+		g_message("Service %s state changed to %s",service->name, service->state);
+	}
 }
 
 /**
@@ -140,7 +254,7 @@ gboolean connman_status_check(LSHandle *sh, LSMessage *message)
  *
  */
 
-bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	if(!connman_status_check(sh, message))
 		return true;
@@ -216,8 +330,11 @@ cleanup:
  *  @param ssid 
  */
 
-bool connect_wifi_with_ssid(const char *ssid)
+static bool connect_wifi_with_ssid(const char *ssid)
 {
+	if(NULL == ssid)
+		return false;
+
  	GSList *ap;
 
 	/* Look up for the service with the given ssid */
@@ -227,6 +344,8 @@ bool connect_wifi_with_ssid(const char *ssid)
 		if(g_str_equal(service->name, ssid)) 
 		{               
 			g_message("ssid %s found, now connecting",service->name);
+			/* Register for 'PropertyChanged' signal for this service to update its connection status */
+			connman_service_register_property_changed_cb(service, (connman_property_changed_cb)service_property_changed_callback);
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
 			if((connected_service != NULL) && (connected_service != service)) 
 			{
@@ -262,7 +381,7 @@ bool connect_wifi_with_ssid(const char *ssid)
  *
  */
 
-bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	if(!connman_status_check(sh, message))
 		return true;
@@ -274,12 +393,6 @@ bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
                 LSMessageReplyCustomError(sh,message,"WiFi switched off");
 		return true;
 	}
-
-	/* Update services in case the "services_changed" signal was triggered
-	 * which will happen if a new service was added, or existing service
-	 * was modified, or a service was removed 
-         */
-	connman_manager_update_services(manager);
 
 	jvalue_ref parsedObj = {0};
         jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
@@ -295,7 +408,6 @@ bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
                 LSMessageReplyErrorBadJSON(sh, message);
                 goto cleanup;
         }
-
 
         jvalue_ref ssidObj = {0};
 
@@ -322,8 +434,11 @@ cleanup:
  *
  */
  
-void add_service(connman_service_t *service, jvalue_ref *network)
+static void add_service(connman_service_t *service, jvalue_ref *network)
 {
+	if(NULL == service || NULL == network)
+		return;
+
 	if(service->name != NULL)	
 		jobject_put(*network, J_CSTR_TO_JVAL("ssid"), jstring_create(service->name));
 
@@ -355,61 +470,44 @@ void add_service(connman_service_t *service, jvalue_ref *network)
 /**
  *  @brief Populate information about all the found networks
  *
- *  @param sh
- *  @param message
+ *  @param reply
  *
  */
 
-void populate_wifi_networks(LSHandle *sh, LSMessage *message)
+static bool populate_wifi_networks(jvalue_ref *reply)
 {
-	bool networks_found = false;  
-	LSError lserror;
+	if(NULL == reply)
+		return;
 
-	jvalue_ref reply = jobject_create();
-	jvalue_ref network_list = jarray_create(NULL);
+        bool networks_found = false;
 
-	GSList *ap;
+        jvalue_ref network_list = jarray_create(NULL);
 
-	connman_manager_update_services(manager);
+        GSList *ap;
 
-	/* Go through the manager's services list and fill in details 
-	   for each one of them */
-	
-	for (ap = manager->services; ap; ap = ap->next)
-	{
-		jvalue_ref network = jobject_create();
-		connman_service_t *service = (connman_service_t *)(ap->data);
-		if(!connman_service_type_wifi(service) || (service->name == NULL))
-			continue;
-		add_service(service, &network);
-		
-		jvalue_ref network_list_j = jobject_create();
-		jobject_put(network_list_j, J_CSTR_TO_JVAL("networkInfo"), network);
-		jarray_append(network_list, network_list_j);
-		
-		networks_found = true;
+        /* Go through the manager's services list and fill in details
+           for each one of them */
+
+        for (ap = manager->services; ap; ap = ap->next)
+        {
+                jvalue_ref network = jobject_create();
+                connman_service_t *service = (connman_service_t *)(ap->data);
+                if(!connman_service_type_wifi(service) || (service->name == NULL))
+                        continue;
+                add_service(service, &network);
+
+                jvalue_ref network_list_j = jobject_create();
+                jobject_put(network_list_j, J_CSTR_TO_JVAL("networkInfo"), network);
+                jarray_append(network_list, network_list_j);
+
+                networks_found = true;
         }
 
-	if(networks_found)
-	{
-		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
-		jobject_put(reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
-
-		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-		if(!response_schema) {
-	                LSMessageReplyErrorUnknown(sh,message);
-			return;
-	    	}
-		if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
-		        LSErrorPrint(&lserror, stderr);
-		        LSErrorFree(&lserror);
-    		}
-		jschema_release(&response_schema);
-	}
-	else
-        	LSMessageReplySuccess(sh, message);
-	
-	j_release(&reply);
+        if(networks_found)
+        {
+                jobject_put(*reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
+        }
+        return networks_found;
 }
 
 /**
@@ -427,8 +525,9 @@ void populate_wifi_networks(LSHandle *sh, LSMessage *message)
  *
  */
 
-bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 {
+	jvalue_ref reply = jobject_create();
 	if(!connman_status_check(sh, message))
 		goto cleanup;
 
@@ -441,6 +540,20 @@ bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 		goto cleanup;
 	}
 
+	bool subscribed = false;
+	LSError lserror;
+	LSErrorInit(&lserror);
+
+	if (LSMessageIsSubscription(message))
+	{
+		if (!LSSubscriptionProcess(sh, message, &subscribed, &lserror))
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
+	}
+
 	connman_technology_t *wifi_tech = connman_manager_find_wifi_technology(manager);
         if(wifi_tech == NULL)
         {
@@ -451,9 +564,27 @@ bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 	/* Scan the network for all available access points by making a connman call*/
         connman_technology_scan_network(wifi_tech);
 
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
 	/* Fill in details of all the found wifi networks */
-	populate_wifi_networks(sh, message);	
+	if(populate_wifi_networks(&reply))
+	{
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(!response_schema) {
+			LSMessageReplyErrorUnknown(sh,message);
+			goto cleanup;
+		}
+		if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jschema_release(&response_schema);
+	}
+	else
+		LSMessageReplySuccess(sh, message);
+
 cleanup:
+	j_release(&reply);
 	return true;
 }
 
@@ -465,8 +596,11 @@ cleanup:
   *
   */
 
-void add_connected_network_status(jvalue_ref *reply, connman_service_t *connected_service)
+static void add_connected_network_status(jvalue_ref *reply, connman_service_t *connected_service)
 {
+	if(NULL == reply || NULL == connected_service)
+		return;
+
 	int connman_state = 0;
 	jobject_put(*reply, J_CSTR_TO_JVAL("status"), jstring_create("connectionStateChanged"));
 
@@ -512,6 +646,27 @@ void add_connected_network_status(jvalue_ref *reply, connman_service_t *connecte
 
 
 /**
+ * @brief Fill in all status information to be sent with 'getstatus' method
+ */
+
+static void send_connection_status(jvalue_ref *reply)
+{
+	if(NULL == reply)
+		return;
+
+	jobject_put(*reply, J_CSTR_TO_JVAL("wakeOnWlan"), jstring_create("disabled"));
+	jobject_put(*reply, J_CSTR_TO_JVAL("status"), jstring_create(is_wifi_powered() ? "serviceEnabled" : "serviceDisabled"));
+
+	/* Get the service which is connecting or already in connected state */
+	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
+	if(connected_service != NULL)
+	{
+		add_connected_network_status(reply, connected_service);
+	}
+
+}
+
+/**
  *  @brief Handler for "getstatus" command.
  *  Get the current wifi connection status, details of the access point if connected to one,
  *  and the ip related info like address, gateway, dns if the service is online
@@ -526,11 +681,12 @@ void add_connected_network_status(jvalue_ref *reply, connman_service_t *connecte
  *  @param context
  */
 
-bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
+static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
 {
 	jvalue_ref reply = jobject_create();
 	LSError lserror;
 	LSErrorInit(&lserror);
+	bool subscribed = false;
 
 	if(!connman_status_check(sh, message))
 		return true;
@@ -538,22 +694,24 @@ bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
 	if(!wifi_technology_status_check(sh, message))
 		return true;
 
-	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));    	
-	jobject_put(reply, J_CSTR_TO_JVAL("wakeOnWlan"), jstring_create("disabled"));    	
-	jobject_put(reply, J_CSTR_TO_JVAL("status"), jstring_create(is_wifi_powered() ? "serviceEnabled" : "serviceDisabled"));    	
-
-	connman_manager_update_services(manager);
-	/* Get the service which is connecting or already in connected state */
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if(connected_service != NULL)
+	if (LSMessageIsSubscription(message))
 	{
-		add_connected_network_status(&reply, connected_service);
+		if (!LSSubscriptionProcess(sh, message, &subscribed, &lserror))
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
 	}
+
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+	send_connection_status(&reply);
 
 	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
 	if(!response_schema) {
 		LSMessageReplyErrorUnknown(sh,message);
-		return;
+		goto cleanup;
 	}
 	
 	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
@@ -561,8 +719,10 @@ bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
         	LSErrorFree(&lserror);
     	}
 
-    	j_release(&reply);
 	jschema_release(&response_schema);
+
+cleanup:
+	j_release(&reply);
     	return true;
 }
 
@@ -572,7 +732,7 @@ bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
  * JSON format:
  * luna://com.palm.wifi/getprofile {"profileId":888}
  */
-bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	return true;
 }
@@ -583,7 +743,7 @@ bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* context)
  * JSON format:
  * luna://com.palm.wifi/getinfo {}
  */
-bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	return true;
 }
@@ -595,10 +755,26 @@ bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
  * luna://com.palm.wifi/deleteprofile {"profileId":888}
  */
 
-bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	return true;
 }
+
+/**
+ * com.palm.wifi service Luna Method Table
+ */
+
+static LSMethod wifi_methods[] = {
+    { LUNA_METHOD_GETPROFILELIST,	handle_get_profile_command },
+    { LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
+    { LUNA_METHOD_GETINFO,		handle_get_info_command },
+    { LUNA_METHOD_SETSTATE,		handle_set_state_command },
+    { LUNA_METHOD_CONNECT,		handle_connect_command },
+    { LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
+    { LUNA_METHOD_DELETEPROFILE,	handle_delete_profile_command },
+    { LUNA_METHOD_GETSTATUS,		handle_get_status_command },
+    { },
+};
 
 /** 
  *  @brief Initialize com.palm.wifi service and all of its methods
@@ -611,6 +787,9 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 	LSErrorInit (&lserror);
 	pLsHandle       = NULL;
 	pLsPublicHandle = NULL;
+
+	if(NULL == mainloop)
+		goto Exit;
 
 	if (LSRegisterPubPriv(WIFI_LUNA_SERVICE_NAME, &pLsHandle, false, &lserror) == false)
 	{
@@ -653,33 +832,45 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 		goto Exit;
 	}       
 
+	/* Register for manager's "PropertyChanged" and "ServicesChanged" signals for sending 'getstatus' and 'findnetworks'
+	   methods to their subscribers */
+	connman_manager_register_property_changed_cb(manager, (connman_property_changed_cb)manager_property_changed_callback);
+	connman_manager_register_services_changed_cb(manager, (connman_services_changed_cb)manager_services_changed_callback);
+
+	/* Register for WiFi technology's "PropertyChanged" signal*/
+	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
+	if(technology)
+	{
+		connman_technology_register_property_changed_cb(technology, (connman_property_changed_cb)technology_property_changed_callback);
+	}
+
 	return 0;
 
 Exit:
         if (LSErrorIsSet(&lserror))
-        {
-       		LSErrorPrint(&lserror, stderr);
-	        LSErrorFree(&lserror);
-        }
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 
         if (pLsHandle)
-        {
-                        LSErrorInit (&lserror);
-        	    if(LSUnregister(pLsHandle, &lserror) == false)
-                        {
-                	        LSErrorPrint(&lserror, stderr);
-                        	LSErrorFree(&lserror);
-                        }
-        }
+	{
+		LSErrorInit (&lserror);
+		if(LSUnregister(pLsHandle, &lserror) == false)
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+	}
 
         if (pLsPublicHandle)
         {
-                        LSErrorInit (&lserror);
-	            if(LSUnregister(pLsPublicHandle, &lserror) == false)
-                        {
-        	                LSErrorPrint(&lserror, stderr);
-                	        LSErrorFree(&lserror);
-                        }
+		LSErrorInit (&lserror);
+		if(LSUnregister(pLsPublicHandle, &lserror) == false)
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
         }
 	return -1;
 }

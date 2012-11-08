@@ -24,7 +24,6 @@
  *
  */
 
-#include "connman-interface.h"
 #include "connman_manager.h"
 
 /**
@@ -36,6 +35,9 @@
 
 static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
+
 	GError *error = NULL;
 	GVariant *ret;
 
@@ -52,8 +54,8 @@ static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 }
 
 /**
- * @brief  Check if the service is already present in the manager's
- * services list.
+ * @brief  Get the path from the variant argument and get the service
+ * in the manager's list matching the path in the variant
  *
  * @param  manager
  * @param  service_v
@@ -61,9 +63,12 @@ static GVariant *connman_manager_get_properties(connman_manager_t *manager)
  */
 
 
-static gboolean service_already_added(connman_manager_t *manager,
+static connman_service_t *find_service_from_props(connman_manager_t *manager,
 			GVariant	*service_v)
 {
+	if(NULL == manager || NULL == service_v)
+		return NULL;
+
 	GSList *iter;
 	GVariant *o = g_variant_get_child_value(service_v, 0);
 	const gchar *path = g_variant_get_string(o, NULL);
@@ -73,10 +78,29 @@ static gboolean service_already_added(connman_manager_t *manager,
 		connman_service_t *service = (connman_service_t *)(iter->data);
 
 		if (g_str_equal(service->path, path))
-			return TRUE;
+			return service;
 	}
 
-	return FALSE;
+	return NULL;
+}
+
+static connman_technology_t *find_technology_by_path(connman_manager_t *manager,
+			gchar *path)
+{
+	if(NULL == manager || NULL == path)
+		return;
+
+	GSList *iter;
+
+	for (iter = manager->technologies; iter; iter = iter->next)
+	{
+		connman_technology_t *technology = (connman_technology_t *)(iter->data);
+
+		if (g_str_equal(technology->path, path))
+			return technology;
+	}
+
+	return NULL;
 }
 
 /**
@@ -88,6 +112,9 @@ static gboolean service_already_added(connman_manager_t *manager,
 
 static gboolean service_on_wifi_iface(GVariant	*service_v)
 {
+	if(NULL == service_v)
+		return FALSE;
+
 	GVariant *properties = g_variant_get_child_value(service_v, 1);
 	gsize i;
 
@@ -124,16 +151,21 @@ static gboolean service_on_wifi_iface(GVariant	*service_v)
 	return FALSE;
 }
 
+/**
+ * @brief Go through the list of services in the "services" parameter and if the service
+ * is already present in the manager's list , update its properties, and if not , add it
+ * as a new service.
+ * Return TRUE only if any service is updated or added, return FALSE otherwise
+ *
+ */
 
-// TODO: The "services_changed" signal needs better handling, so that instead of refetching all services
-// only services that have been added, changed or removed should be handled.
-
-#if 0
-
-static void connman_manager_update_services(connman_manager_t *manager, GVariant *services)
+static gboolean connman_manager_update_services(connman_manager_t *manager, GVariant *services)
 {
+	if(NULL == manager || NULL == services)
+		return FALSE;
+
 	gsize i;
-	GSList *iter, *remove_list;
+	gboolean ret = FALSE;
 
 	for (i = 0; i < g_variant_n_children(services); i++)
 	{
@@ -142,52 +174,53 @@ static void connman_manager_update_services(connman_manager_t *manager, GVariant
 
 		if(service_on_wifi_iface(service_v))
 		{
-			if(service_already_added(manager, service_v))
+			service = find_service_from_props(manager, service_v);
+			if(NULL != service)
 			{		
-				remove_list = g_slist_append(remove_list, service);
+				g_message("Updating service %s",service->name);
+				connman_service_update_properties(service, service_v);
 			}
-			service = connman_service_new(service_v);
-			g_message("Adding service %s",service->name);
-			manager->services = g_slist_append(manager->services, service);
+			else
+			{
+				service = connman_service_new(service_v);
+				g_message("Adding service %s",service->name);
+				manager->services = g_slist_append(manager->services, service);
+			}
+			ret = TRUE;
 		}
 	}
-
-	for(iter = remove_list; iter; iter = iter->next)
-	{
-		connman_service_t *service = (connman_service_t *)(iter->data);
-		manager->services = g_slist_remove(manager->services, service);
-		connman_service_free(service, NULL);
-	}
-
+	return ret;
 }
 
-static void connman_manager_remove_old_services(connman_manager_t *manager, GVariant *services)
+/**
+ * @brief Remove all the services in the services_removed string array from the manager's services list
+ * one by one and return TRUE only if atleast one service is removed, else return FALSE
+ *
+ */
+
+static gboolean connman_manager_remove_old_services(connman_manager_t *manager, gchar **services_removed)
 {
-	GSList *iter, *remove_list;
-	gsize i;
+	if(NULL == manager || NULL == services_removed)
+		return FALSE;
+	
+	GSList *iter, *remove_list = NULL;
+	gboolean ret = FALSE;
+
 	/* look for removed services */
-	for (iter = manager->services; iter; iter = iter->next)
+	while(NULL != *services_removed)
 	{
-		connman_service_t *service = (connman_service_t *)(iter->data);
-		gboolean found = FALSE;
-
-		for (i = 0; i < g_variant_n_children(services); i++)
+		for (iter = manager->services; iter; iter = iter->next)
 		{
-			GVariant *service_v = g_variant_get_child_value(services, i);
-			GVariant *o = g_variant_get_child_value(service_v, 0);
-			const gchar *path = g_variant_get_string(o, NULL);
+			connman_service_t *service = (connman_service_t *)(iter->data);
 
-			g_message("Removing service %s",path);
-			if (g_str_equal(service->path, path))
+			if (g_str_equal(service->path, *services_removed))
 			{
-				found = TRUE;
+				g_message("Removing service : %s",service->name);
+				remove_list = g_slist_append(remove_list, service);
 				break;
     			}
 		}
-
-	if (!found)
-		remove_list = g_slist_append(remove_list, service);
-
+		*services_removed++;
 	}
 
 	/* 
@@ -197,11 +230,12 @@ static void connman_manager_remove_old_services(connman_manager_t *manager, GVar
 	for (iter = remove_list; iter; iter = iter->next)
 	{
 		connman_service_t *service = (connman_service_t *)(iter->data);
-		manager->services = g_slist_remove_link(manager->services, service);
+		manager->services = g_slist_remove_link(manager->services, g_slist_find(manager->services, service));
 		connman_service_free(service, NULL);
+		ret = TRUE;
 	}
+	return ret;
 }
-#endif
 
 /**
  * @brief  Free the manager's services list
@@ -212,6 +246,8 @@ static void connman_manager_remove_old_services(connman_manager_t *manager, GVar
 
 static void connman_manager_free_services(connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
 	g_slist_foreach(manager->services, (GFunc) connman_service_free, NULL);
 	g_slist_free(manager->services);
 	manager->services = NULL;
@@ -227,6 +263,8 @@ static void connman_manager_free_services(connman_manager_t *manager)
 static void connman_manager_free_technologies(connman_manager_t *manager)
 
 {
+	if(NULL == manager)
+		return;
 	g_slist_foreach(manager->technologies, (GFunc) connman_technology_free, NULL);
 	g_slist_free(manager->technologies);
 	manager->technologies = NULL;
@@ -241,6 +279,9 @@ static void connman_manager_free_technologies(connman_manager_t *manager)
 
 static gboolean connman_manager_add_services(connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
+	
 	GError *error = NULL;
 	GVariant *services;
 	gsize i;
@@ -257,9 +298,9 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 	for (i = 0; i < g_variant_n_children(services); i++)
 	{
 		GVariant *service_v = g_variant_get_child_value(services, i);
-		connman_service_t *service;
+		connman_service_t *service = find_service_from_props(manager, service_v);
 
-		if(!service_already_added(manager, service_v))
+		if(service == NULL)
 		{
 			if(service_on_wifi_iface(service_v))
 			{
@@ -281,6 +322,9 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 
 static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
+	
 	GError *error = NULL;
 	GVariant *technologies;
 	gsize i;
@@ -316,6 +360,9 @@ static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 
 gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
+	
 	GVariant *properties = connman_manager_get_properties(manager);
 	gsize i;
 
@@ -346,6 +393,8 @@ gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 
 connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
 
 	GSList *iter;
 
@@ -372,6 +421,9 @@ connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *m
 
 connman_service_t *connman_manager_get_connected_service (connman_manager_t *manager)
 {
+	if(NULL == manager)
+		return;
+
 	GSList *iter;
 
 	for (iter = manager->services; iter; iter = iter->next)
@@ -396,44 +448,6 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 }
 
 /**
- * @brief  Update the manager's services list
- * This function will be called whenever the "services_updated" flag is set to true
- * which would happen if a new service is added, or existing service is modified/deleted.
- *
- * @param  manager
- *
- */
-
-void connman_manager_update_services(connman_manager_t *manager)
-{
-	if(manager->services_updated)
-	{
-		connman_manager_free_services(manager);
-		connman_manager_add_services(manager);
-		manager->services_updated = FALSE;
-	}
-}
-
-/**
- * @brief  Update the manager's technologies list
- * This function will be called whenever the "technologies_updated" flag is set to true
- * which would happen if a new technology is added, or existing technology is modified/deleted.
- *
- * @param  manager
- *
- */
-
-void connman_manager_update_technologies(connman_manager_t *manager)
-{
-	if(manager->technologies_updated)
-	{
-		connman_manager_free_technologies(manager);
-		connman_manager_add_technologies(manager);
-		manager->technologies_updated = FALSE;
-	}
-}
-
-/**
  * @brief  Callback for manager's "property_changed" signal
  *
  * @param  proxy
@@ -449,6 +463,8 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
 {
 	GVariant *va = g_variant_get_child_value(v, 0);
 	g_message("Manager property %s changed : %s",property, g_variant_get_string(va,NULL));
+	if(NULL != manager->handle_property_change_fn)
+		(manager->handle_property_change_fn)((gpointer)manager, property, v);
 }
 
 
@@ -463,11 +479,17 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
  */
 
 static void
-technology_added_cb(ConnmanInterfaceManager *proxy,const gchar * path, GVariant *v,
+technology_added_cb(ConnmanInterfaceManager *proxy, gchar * path, GVariant *v,
 	      connman_manager_t      *manager)
 {
 	g_message("Technology %s added", path);
-	manager->technologies_updated = TRUE;
+
+	if(NULL != find_technology_by_path(manager,path))
+	{
+		GVariant *technology_v = g_variant_new("(o@a{sv})",path, v);
+		connman_technology_t *technology = connman_technology_new(technology_v);
+		manager->technologies = g_slist_append(manager->technologies, technology);
+	}
 }
 
 /**
@@ -478,11 +500,16 @@ technology_added_cb(ConnmanInterfaceManager *proxy,const gchar * path, GVariant 
  */
 
 static void
-technology_removed_cb(ConnmanInterfaceManager *proxy, GVariant *v,
+technology_removed_cb(ConnmanInterfaceManager *proxy, gchar * path,
 	      connman_manager_t      *manager)
 {
 	g_message("Technology removed");
-	manager->technologies_updated = TRUE;
+	connman_technology_t *technology = find_technology_by_path(manager, path);
+	if(NULL != technology)
+	{
+		manager->technologies = g_slist_remove_link(manager->technologies, g_slist_find(manager->technologies, technology));
+		connman_technology_free(technology, NULL);
+	}
 }
 
 /**
@@ -497,19 +524,35 @@ technology_removed_cb(ConnmanInterfaceManager *proxy, GVariant *v,
 
 static void 
 services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added, 
-		GVariant *services_removed, connman_manager_t *manager)
+		gchar **services_removed, connman_manager_t *manager)
 {
-	g_message("Services_changed");
-	manager->services_updated = TRUE;
+	g_message("Services_changed ");
+	if(connman_manager_update_services(manager, services_added) ||
+		connman_manager_remove_old_services(manager, services_removed))
+	{
+		if(NULL != manager->handle_services_change_fn)
+			(manager->handle_services_change_fn)(manager);
+	}
 }
+
+
+void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func)
+{
+	if(NULL == func)
+		return;
+	manager->handle_property_change_fn = func;
+}
+
+void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func)
+{
+	if(NULL == func)
+		return;
+	manager->handle_services_change_fn = func;
+}
+
 
 /**
  * @brief  Initialize a new manager instance and update its services and technologies list
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  manager
  *
  */
 
@@ -537,6 +580,9 @@ connman_manager_t *connman_manager_new (void)
 		g_error_free(error);
 		return NULL;
 	}
+	
+	manager->handle_property_change_fn = manager->handle_services_change_fn = NULL;
+	
 	g_signal_connect(G_OBJECT(manager->remote), "property-changed",
 		   G_CALLBACK(property_changed_cb), manager);
 
@@ -553,8 +599,6 @@ connman_manager_t *connman_manager_new (void)
 	connman_manager_add_technologies(manager);
 	connman_manager_add_services(manager);
 
-	manager->services_updated = manager->technologies_updated = FALSE;
-
 	g_message("%d services", g_slist_length(manager->services));
 	g_message("%d technologies", g_slist_length(manager->technologies));
 
@@ -570,7 +614,7 @@ connman_manager_t *connman_manager_new (void)
 
 void connman_manager_free (connman_manager_t *manager)
 {
-	if(manager == NULL)
+	if(NULL == manager)
 		return;
 
 	connman_manager_free_services(manager);

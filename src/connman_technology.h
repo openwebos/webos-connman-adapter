@@ -31,7 +31,7 @@
 #include <gio/gio.h>
 #include <glib-object.h>
 
-#include "connman-interface.h"
+#include "connman_common.h"
 
 typedef struct connman_technology
 {
@@ -40,10 +40,12 @@ typedef struct connman_technology
   	gchar *name;
 	gchar *path;
 	gboolean powered;
+	connman_property_changed_cb     handle_property_change_fn;
 }connman_technology_t;
 
 extern gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
 extern gboolean connman_technology_scan_network(connman_technology_t *technology);
+extern void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func);
 
 extern connman_technology_t *connman_technology_new(GVariant *variant);
 extern void connman_technology_free (gpointer data, gpointer user_data);
