@@ -29,6 +29,8 @@ include(webOS/webOS)
 webos_modules_init(1 0 0 QUALIFIER RC4)
 webos_component(1 0 0)
 
+set(WIFI_IFACE_NAME "wlan0" CACHE STRING "WiFi interface name")
+
 find_program(GDBUS_CODEGEN_EXECUTABLE NAMES gdbus-codegen DOC "gdbus-codegen executable")
 if(NOT GDBUS_CODEGEN_EXECUTABLE)
 	message(FATAL_ERROR "Executable gdbus-codegen not found")
@@ -52,7 +54,15 @@ pkg_check_modules(PBNJSON_C REQUIRED pbnjson_c)
 include_directories(${PBNJSON_C_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${PBNJSON_C_CFLAGS_OTHER})
 
-webos_add_compiler_flags(ALL -Wall)
+pkg_check_modules(OPENSSL REQUIRED openssl)
+include_directories(${OPENSSL_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${OPENSSL_CFLAGS_OTHER})
+
+pkg_check_modules(LUNAPREFS REQUIRED luna-prefs)
+include_directories(${LUNAPREFS_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${LUNAPREFS_CFLAGS_OTHER})
+
+webos_add_compiler_flags(ALL -Wall -g)
 
 webos_add_linker_options(ALL --no-undefined)
 
@@ -69,6 +79,7 @@ if(codegen_failed)
 endif()
 
 include_directories(src ${GDBUS_IF_DIR})
+webos_configure_header_files(src)
 
 file(GLOB SOURCE_FILES src/*.c ${GDBUS_IF_DIR}/connman-interface.c)
 
@@ -78,6 +89,8 @@ target_link_libraries(webos-connman-adapter
                         ${LUNASERVICE2_LDFLAGS}
                         ${GIO-UNIX_LDFLAGS}
 			${PBNJSON_C_LDFLAGS}
+			${OPENSSL_LDFLAGS}
+			${LUNAPREFS_LDFLAGS}
                         rt
                         pthread)
 

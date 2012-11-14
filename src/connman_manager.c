@@ -73,7 +73,7 @@ static connman_service_t *find_service_from_props(connman_manager_t *manager,
 	GVariant *o = g_variant_get_child_value(service_v, 0);
 	const gchar *path = g_variant_get_string(o, NULL);
 
-	for (iter = manager->services; iter; iter = iter->next)
+	for (iter = manager->services; NULL != iter; iter = iter->next)
 	{
 		connman_service_t *service = (connman_service_t *)(iter->data);
 
@@ -92,7 +92,7 @@ static connman_technology_t *find_technology_by_path(connman_manager_t *manager,
 
 	GSList *iter;
 
-	for (iter = manager->technologies; iter; iter = iter->next)
+	for (iter = manager->technologies; NULL != iter; iter = iter->next)
 	{
 		connman_technology_t *technology = (connman_technology_t *)(iter->data);
 
@@ -140,7 +140,7 @@ static gboolean service_on_wifi_iface(GVariant	*service_v)
 					GVariant *ifacev = g_variant_get_child_value(ethernet, 1);
 					GVariant *ifaceva = g_variant_get_variant(ifacev);
 					const gchar *iface = g_variant_get_string(ifaceva, NULL);
-					if(g_str_equal(iface,CONNMAN_WIFI_INTERACE_NAME))
+					if(g_str_equal(iface,CONNMAN_WIFI_INTERFACE_NAME))
 						return TRUE;
 					else
 						return FALSE;
@@ -209,7 +209,7 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 	/* look for removed services */
 	while(NULL != *services_removed)
 	{
-		for (iter = manager->services; iter; iter = iter->next)
+		for (iter = manager->services; NULL != iter; iter = iter->next)
 		{
 			connman_service_t *service = (connman_service_t *)(iter->data);
 
@@ -227,7 +227,7 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 	 * do the actual remove of services in an extra loop, so we don't
 	 * alter the list we're walking
 	 */
-	for (iter = remove_list; iter; iter = iter->next)
+	for (iter = remove_list; NULL != iter; iter = iter->next)
 	{
 		connman_service_t *service = (connman_service_t *)(iter->data);
 		manager->services = g_slist_remove_link(manager->services, g_slist_find(manager->services, service));
@@ -398,7 +398,7 @@ connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *m
 
 	GSList *iter;
 
-	for (iter = manager->technologies; iter; iter = iter->next)
+	for (iter = manager->technologies; NULL != iter; iter = iter->next)
 	{
 		connman_technology_t *tech = (struct connman_technology *)(iter->data);
 
@@ -426,7 +426,7 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 
 	GSList *iter;
 
-	for (iter = manager->services; iter; iter = iter->next)
+	for (iter = manager->services; NULL != iter; iter = iter->next)
 	{
 		connman_service_t *service = (struct connman_service *)(iter->data);
 		int service_state = connman_service_get_state(service->state);
@@ -559,7 +559,7 @@ void connman_manager_register_services_changed_cb(connman_manager_t *manager, co
 connman_manager_t *connman_manager_new (void)
 {
 	GError *error = NULL;
-	connman_manager_t *manager = malloc(sizeof(connman_manager_t));
+	connman_manager_t *manager = g_new0(connman_manager_t, 1);
 	if(manager == NULL)
 	{
 		g_error("Out of memory !!!");
@@ -620,6 +620,6 @@ void connman_manager_free (connman_manager_t *manager)
 	connman_manager_free_services(manager);
 	connman_manager_free_technologies(manager);
 
-	free(manager);
+	g_free(manager);
 	manager = NULL;
 }

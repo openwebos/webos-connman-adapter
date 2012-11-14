@@ -25,7 +25,10 @@
 
 #include "connman-interface.h"
 
+#define CONNMAN_WIFI_INTERFACE_NAME	"@WIFI_IFACE_NAME@"
+
 typedef void (*connman_property_changed_cb)(gpointer , gchar *, GVariant *);
+typedef void (*connman_state_changed_cb)(gpointer , gchar *);
 
 #endif /* _CONNMAN_COMMON_H_ */
 

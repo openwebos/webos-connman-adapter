@@ -31,15 +31,13 @@
 #include "connman_service.h"
 #include "connman_technology.h"
 
-#define CONNMAN_WIFI_INTERACE_NAME	"wlan0"
-
 typedef void (*connman_services_changed_cb)(gpointer);
 
 typedef struct connman_manager
 {
 	ConnmanInterfaceManager	*remote;
 	GSList	*services;
-	GSList	*technologies;	
+	GSList	*technologies;
 	connman_property_changed_cb	handle_property_change_fn;
 	connman_services_changed_cb	handle_services_change_fn;
 }connman_manager_t;

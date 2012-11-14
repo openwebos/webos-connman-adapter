@@ -128,15 +128,18 @@ gboolean connman_service_connect(connman_service_t *service)
 		return FALSE;
 
 	GError *error = NULL;
+	gboolean ret = TRUE;
 
 	connman_interface_service_call_connect_sync(service->remote, NULL, &error);
 	if (error)
 	{
 		g_message("Error: %s", error->message);
+		/* If the error is "AlreadyConnected" its not an error */
+		if(NULL == g_strrstr(error->message,"AlreadyConnected"))
+			ret = FALSE;
 		g_error_free(error);
-		return FALSE;
 	}
-	return TRUE;
+	return ret;
 }
 
 
@@ -270,16 +273,22 @@ static void
 property_changed_cb(ConnmanInterfaceService *proxy, gchar * property, GVariant *v,
               connman_service_t      *service)
 {
-        if(NULL != service->handle_property_change_fn)
-                (service->handle_property_change_fn)((gpointer)service, property, v);
+	/* Invoke function pointers only for state changed */
+	if(g_str_equal(property, "State") == FALSE)
+		return;
+	g_free(service->state);
+	service->state = g_variant_dup_string(g_variant_get_variant(v), NULL);
+
+	if(NULL != service->handle_state_change_fn)
+		(service->handle_state_change_fn)((gpointer)service, service->state);
 }
 
 
-void connman_service_register_property_changed_cb(connman_service_t *service, connman_property_changed_cb func)
+void connman_service_register_state_changed_cb(connman_service_t *service, connman_state_changed_cb func)
 {
 	if(NULL == func)
 		return;
-        service->handle_property_change_fn = func;
+        service->handle_state_change_fn = func;
 }
 
 
@@ -354,14 +363,13 @@ connman_service_t *connman_service_new(GVariant *variant)
 	if(NULL == variant)
 		return NULL;
 	
-	connman_service_t *service = malloc(sizeof(connman_service_t));
+	connman_service_t *service = g_new0(connman_service_t, 1);
 	if(service == NULL)
 	{
 		g_error("Out of memory !!!");
 		return NULL;
 	}
 
-	memset(service, 0, sizeof(connman_service_t));
 	service->path = service->name = service->state = NULL;
 	
 	GVariant *service_v = g_variant_get_child_value(variant, 0);
@@ -383,10 +391,10 @@ connman_service_t *connman_service_new(GVariant *variant)
 		return NULL;
 	}
 
-	service->handle_property_change_fn = NULL;
-	
-	g_signal_connect(G_OBJECT(service->remote), "property-changed",
-		G_CALLBACK(property_changed_cb), service);
+	service->handle_state_change_fn = NULL;
+
+	service->sighandler_id = g_signal_connect_data(G_OBJECT(service->remote), "property-changed",
+		G_CALLBACK(property_changed_cb), service, NULL, 0);
 
 	connman_service_update_properties(service, variant);
 
@@ -419,7 +427,11 @@ void connman_service_free(gpointer data, gpointer user_data)
 	g_free(service->ipinfo.gateway);
 	g_strfreev(service->ipinfo.dns);
 
-	free(service);
+	if(service->sighandler_id)
+		g_signal_handler_disconnect(G_OBJECT(service->remote), service->sighandler_id);
+	service->handle_state_change_fn = NULL;
+
+	g_free(service);
 	service = NULL;
 }
 

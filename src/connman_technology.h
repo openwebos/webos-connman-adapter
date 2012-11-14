@@ -40,6 +40,7 @@ typedef struct connman_technology
   	gchar *name;
 	gchar *path;
 	gboolean powered;
+	gulong sighandler_id;
 	connman_property_changed_cb     handle_property_change_fn;
 }connman_technology_t;
 
