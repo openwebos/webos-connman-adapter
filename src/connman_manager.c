@@ -145,7 +145,7 @@ static gboolean service_on_wifi_iface(GVariant	*service_v)
 					else
 						return FALSE;
 				}
-		  	}
+			}
 		}
 	}
 	return FALSE;
@@ -189,6 +189,7 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 			ret = TRUE;
 		}
 	}
+
 	return ret;
 }
 
@@ -218,8 +219,9 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 				g_message("Removing service : %s",service->name);
 				remove_list = g_slist_append(remove_list, service);
 				break;
-    			}
+			}
 		}
+
 		*services_removed++;
 	}
 
@@ -234,6 +236,7 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 		connman_service_free(service, NULL);
 		ret = TRUE;
 	}
+
 	return ret;
 }
 
@@ -281,7 +284,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 {
 	if(NULL == manager)
 		return;
-	
+
 	GError *error = NULL;
 	GVariant *services;
 	gsize i;
@@ -310,6 +313,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 			}
 		}
 	}
+
 	return TRUE;
 }
 
@@ -444,7 +448,6 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 	}
 
 	return NULL;
-
 }
 
 /**
@@ -550,7 +553,6 @@ void connman_manager_register_services_changed_cb(connman_manager_t *manager, co
 	manager->handle_services_change_fn = func;
 }
 
-
 /**
  * @brief  Initialize a new manager instance and update its services and technologies list
  *
@@ -594,7 +596,6 @@ connman_manager_t *connman_manager_new (void)
 
 	g_signal_connect(G_OBJECT(manager->remote), "services-changed",
 		   G_CALLBACK(services_changed_cb), manager);
-
 
 	connman_manager_add_technologies(manager);
 	connman_manager_add_services(manager);

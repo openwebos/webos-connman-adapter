@@ -31,8 +31,7 @@ typedef struct wifi_profile
 	// For open networks these 2 fields are sufficient
 	guint profile_id;
 	gchar *ssid;
-}wifi_profile_t;
-
+} wifi_profile_t;
 
 extern void init_wifi_profile_list(void);
 extern wifi_profile_t * get_profile_by_id(guint profile_id);
@@ -42,6 +41,5 @@ extern void delete_profile(wifi_profile_t *profile);
 extern gboolean profile_list_is_empty(void);
 extern wifi_profile_t *get_next_profile(wifi_profile_t *curr_profile);
 extern void move_profile_to_head(wifi_profile_t *new_head);
-
 
 #endif /* _WIFI_PROFILE_H_ */

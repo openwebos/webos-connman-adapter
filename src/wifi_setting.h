@@ -21,7 +21,6 @@
  *
  */
 
-
 #ifndef _WIFI_SETTING_H_
 #define _WIFI_SETTING_H_
 
@@ -29,10 +28,10 @@
 
 typedef enum
 {
-        WIFI_NULL_SETTING,
-        WIFI_PROFILELIST_SETTING,
-        WIFI_LAST_SETTING,
-}wifi_setting_type_t;
+	WIFI_NULL_SETTING,
+	WIFI_PROFILELIST_SETTING,
+	WIFI_LAST_SETTING,
+} wifi_setting_type_t;
 
 extern gboolean load_wifi_setting(wifi_setting_type_t setting, void *data);
 extern gboolean store_wifi_setting(wifi_setting_type_t setting, void *data);

@@ -79,9 +79,9 @@ gchar *connman_service_get_webos_state(int connman_state)
 			return "ipFailed";
 		default:
 			break;
-    }
+	}
 
-    return "notAssociated";
+	return "notAssociated";
 }
 
 /**
@@ -94,7 +94,7 @@ gchar *connman_service_get_webos_state(int connman_state)
 int connman_service_get_state(const gchar *state)
 {
 	int result = CONNMAN_SERVICE_STATE_IDLE;
-	
+
 	if(NULL == state)
 		return result;
 
@@ -140,6 +140,7 @@ gboolean connman_service_connect(connman_service_t *service)
 			ret = FALSE;
 		g_error_free(error);
 	}
+
 	return ret;
 }
 
@@ -204,6 +205,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 			GVariant *v = g_variant_get_child_value(property, 1);
 			GVariant *va = g_variant_get_child_value(v, 0);
 			gsize j;
+
 			for(j = 0; j < g_variant_n_children(va); j++)
 	  		{
 				GVariant *ethernet = g_variant_get_child_value(va, j);
@@ -216,13 +218,15 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 					GVariant *ifaceva = g_variant_get_variant(ifacev);
 					service->ipinfo.iface = g_variant_dup_string(ifaceva, NULL);
 				}
-	  		}
+			}
 		}
+
 		if(g_str_equal(key, "IPv4"))
 		{
 			GVariant *v = g_variant_get_child_value(property, 1);
 			GVariant *va = g_variant_get_child_value(v, 0);
 			gsize j;
+
 			for(j = 0; j < g_variant_n_children(va); j++)
 			{
 				GVariant *ipv4 = g_variant_get_child_value(va, j);
@@ -235,20 +239,23 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 					GVariant *netmaskva = g_variant_get_variant(netmaskv);
 					service->ipinfo.netmask = g_variant_dup_string(netmaskva, NULL);
 				}
+
 				if(g_str_equal(ikey, "Address"))
 				{
 					GVariant *addressv = g_variant_get_child_value(ipv4, 1);
 					GVariant *addressva = g_variant_get_variant(addressv);
 					service->ipinfo.address = g_variant_dup_string(addressva, NULL);
 				}
+
 				if(g_str_equal(ikey, "Gateway"))
 				{
 					GVariant *gatewayv = g_variant_get_child_value(ipv4, 1);
 					GVariant *gatewayva = g_variant_get_variant(gatewayv);
 					service->ipinfo.gateway = g_variant_dup_string(gatewayva, NULL);
 				}
-			  }
 			}
+		}
+
 		if(g_str_equal(key, "Nameservers"))
 		{
 			GVariant *v = g_variant_get_child_value(property, 1);
@@ -256,6 +263,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 			service->ipinfo.dns = g_variant_dup_strv(va, NULL);
 		}
 	}
+
 	return TRUE;
 }
 
@@ -272,11 +280,12 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 
 static void
 property_changed_cb(ConnmanInterfaceService *proxy, gchar * property, GVariant *v,
-              connman_service_t      *service)
+				connman_service_t      *service)
 {
 	/* Invoke function pointers only for state changed */
 	if(g_str_equal(property, "State") == FALSE)
 		return;
+
 	g_free(service->state);
 	service->state = g_variant_dup_string(g_variant_get_variant(v), NULL);
 
@@ -289,7 +298,8 @@ void connman_service_register_state_changed_cb(connman_service_t *service, connm
 {
 	if(NULL == func)
 		return;
-        service->handle_state_change_fn = func;
+
+	service->handle_state_change_fn = func;
 }
 
 
@@ -348,7 +358,6 @@ void connman_service_update_properties(connman_service_t *service, GVariant *ser
 
 		if (g_str_equal(key, "Favorite"))
 			service->favorite = g_variant_get_boolean(val);
-
 	}
 }
 
@@ -363,7 +372,7 @@ connman_service_t *connman_service_new(GVariant *variant)
 {
 	if(NULL == variant)
 		return NULL;
-	
+
 	connman_service_t *service = g_new0(connman_service_t, 1);
 	if(service == NULL)
 	{
@@ -372,12 +381,11 @@ connman_service_t *connman_service_new(GVariant *variant)
 	}
 
 	service->path = service->name = service->state = NULL;
-	
+
 	GVariant *service_v = g_variant_get_child_value(variant, 0);
 	service->path = g_variant_dup_string(service_v, NULL);
-	
-	GError *error = NULL;
 
+	GError *error = NULL;
 
 	service->remote = connman_interface_service_proxy_new_for_bus_sync(G_BUS_TYPE_SYSTEM,
 								G_DBUS_PROXY_FLAGS_NONE,

@@ -42,15 +42,15 @@ typedef struct connman_service
 {
 	ConnmanInterfaceService *remote;
 	gchar *path;
-  	gchar *name;
-  	gchar *state;
+	gchar *name;
+	gchar *state;
 
-  	guchar strength;
+	guchar strength;
 	GStrv security;
-  	gboolean auto_connect;
-  	gboolean immutable;
-  	gboolean favorite;
-  	gint type;
+	gboolean auto_connect;
+	gboolean immutable;
+	gboolean favorite;
+	gint type;
 	ipinfo_t ipinfo;
 	gulong sighandler_id;
 	connman_state_changed_cb handle_state_change_fn;
@@ -64,14 +64,14 @@ enum {
 };
 
 enum {
-        CONNMAN_SERVICE_STATE_UNKNOWN       = 0,
-        CONNMAN_SERVICE_STATE_IDLE,
-        CONNMAN_SERVICE_STATE_ASSOCIATION,
-        CONNMAN_SERVICE_STATE_CONFIGURATION,
-        CONNMAN_SERVICE_STATE_READY,
-        CONNMAN_SERVICE_STATE_ONLINE,
-        CONNMAN_SERVICE_STATE_DISCONNECT,
-        CONNMAN_SERVICE_STATE_FAILURE
+	CONNMAN_SERVICE_STATE_UNKNOWN			= 0,
+	CONNMAN_SERVICE_STATE_IDLE,
+	CONNMAN_SERVICE_STATE_ASSOCIATION,
+	CONNMAN_SERVICE_STATE_CONFIGURATION,
+	CONNMAN_SERVICE_STATE_READY,
+	CONNMAN_SERVICE_STATE_ONLINE,
+	CONNMAN_SERVICE_STATE_DISCONNECT,
+	CONNMAN_SERVICE_STATE_FAILURE
 };
 
 extern gboolean connman_service_type_wifi(connman_service_t *service);

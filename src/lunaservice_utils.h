@@ -24,7 +24,6 @@
  *
  */
 
-
 #ifndef __LUNASERVICE_UTILS_H__
 #define __LUNASERVICE_UTILS_H__
 

@@ -29,76 +29,75 @@
 void
 LSMessageReplyErrorUnknown(LSHandle *sh, LSMessage *message)
 {
-    LSError lserror;
-    LSErrorInit(&lserror);
+	LSError lserror;
+	LSErrorInit(&lserror);
 
-    bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
-        "\"errorText\":\"Unknown Error.\"}", &lserror);
-    if (!retVal)
-    {
-        LSErrorPrint(&lserror, stderr);
-        LSErrorFree(&lserror);
-    }
+	bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
+		"\"errorText\":\"Unknown Error.\"}", &lserror);
+	if (!retVal)
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 }
 
 void
 LSMessageReplyErrorInvalidParams(LSHandle *sh, LSMessage *message)
 {
-    LSError lserror;
-    LSErrorInit(&lserror);
+	LSError lserror;
+	LSErrorInit(&lserror);
 
-    bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
-        "\"errorText\":\"Invalid parameters.\"}", NULL);
-    if (!retVal)
-    {
-        LSErrorPrint(&lserror, stderr);
-        LSErrorFree(&lserror);
-    }
+	bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
+		"\"errorText\":\"Invalid parameters.\"}", NULL);
+	if (!retVal)
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 }
 
 void
 LSMessageReplyErrorBadJSON(LSHandle *sh, LSMessage *message)
 {
-    LSError lserror;
-    LSErrorInit(&lserror);
+	LSError lserror;
+	LSErrorInit(&lserror);
 
-    bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
-        "\"errorText\":\"Malformed json.\"}", NULL);
-    if (!retVal)
-    {
-        LSErrorPrint(&lserror, stderr);
-        LSErrorFree(&lserror);
-    }
+	bool retVal = LSMessageReply(sh, message, "{\"returnValue\":false,"
+		"\"errorText\":\"Malformed json.\"}", NULL);
+	if (!retVal)
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 }
 
 void
 LSMessageReplyCustomError(LSHandle *sh, LSMessage *message, const char *errormsg)
 {
-    LSError lserror;
-    LSErrorInit(&lserror);
-    char errorString[256];
+	LSError lserror;
+	LSErrorInit(&lserror);
+	char errorString[256];
 
-    sprintf(errorString, "{\"returnValue\":false,\"errorText\":\"%s\"}",errormsg);
+	sprintf(errorString, "{\"returnValue\":false,\"errorText\":\"%s\"}",errormsg);
 
-    bool retVal = LSMessageReply(sh, message, errorString, NULL);
-    if (!retVal)
-    {
-        LSErrorPrint(&lserror, stderr);
-        LSErrorFree(&lserror);
-    }
+	bool retVal = LSMessageReply(sh, message, errorString, NULL);
+	if (!retVal)
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 }
 
 void
 LSMessageReplySuccess(LSHandle *sh, LSMessage *message)
 {
-    LSError lserror;
-    LSErrorInit(&lserror);
+	LSError lserror;
+	LSErrorInit(&lserror);
 
-    bool retVal = LSMessageReply(sh, message, "{\"returnValue\":true}",
-        NULL);
-    if (!retVal)
-    {
-        LSErrorPrint(&lserror, stderr);
-        LSErrorFree(&lserror);
-    }
+	bool retVal = LSMessageReply(sh, message, "{\"returnValue\":true}", NULL);
+	if (!retVal)
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 }

@@ -51,7 +51,7 @@ static connman_manager_t *manager = NULL;
 
 /**
  *  @brief Returns true if wifi technology is powered on
- *  
+ *
  */
 
 static gboolean is_wifi_powered(void)
@@ -81,7 +81,7 @@ static gboolean set_wifi_state(bool state)
 
 static gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 {
-	if(NULL == connman_manager_find_wifi_technology(manager))
+	if (NULL == connman_manager_find_wifi_technology(manager))
 	{
 		LSMessageReplyCustomError(sh, message, "WiFi technology unavailable");
 		return false;
@@ -100,7 +100,7 @@ static gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 
 static gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 {
-	if(!connman_manager_is_manager_available(manager))
+	if (!connman_manager_is_manager_available(manager))
 	{
 		LSMessageReplyCustomError(sh, message, "Connman service unavailable");
 		return false;
@@ -118,19 +118,19 @@ static gboolean connman_status_check(LSHandle *sh, LSMessage *message)
 
 static void add_connected_network_status(jvalue_ref *reply, connman_service_t *connected_service)
 {
-	if(NULL == reply || NULL == connected_service)
+	if (NULL == reply || NULL == connected_service)
 		return;
 
 	int connman_state = 0;
 	jobject_put(*reply, J_CSTR_TO_JVAL("status"), jstring_create("connectionStateChanged"));
 
-    	jvalue_ref network_info = jobject_create();	
+	jvalue_ref network_info = jobject_create();
 
 	/* Fill in details about the service access point */
-	if(connected_service->name != NULL)
+	if (connected_service->name != NULL)
 		jobject_put(network_info, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
 
-	if(connected_service->state != NULL)
+	if (connected_service->state != NULL)
 	{
 		connman_state = connman_service_get_state(connected_service->state);
 		jobject_put(network_info, J_CSTR_TO_JVAL("connectState"), jstring_create(connman_service_get_webos_state(connman_state)));
@@ -142,18 +142,18 @@ static void add_connected_network_status(jvalue_ref *reply, connman_service_t *c
 	jobject_put(*reply,  J_CSTR_TO_JVAL("networkInfo"), network_info);
 
 	/* Fill in ip information only for a service which is online (fully connected) */
-	if(connman_state == CONNMAN_SERVICE_STATE_ONLINE)
+	if (connman_state == CONNMAN_SERVICE_STATE_ONLINE)
 	{
 		connman_service_get_ipinfo(connected_service);
 		jvalue_ref ip_info = jobject_create();	
 
-		if(connected_service->ipinfo.iface)
+		if (connected_service->ipinfo.iface)
 			jobject_put(ip_info, J_CSTR_TO_JVAL("interface"), jstring_create(connected_service->ipinfo.iface));
-		if(connected_service->ipinfo.address)
+		if (connected_service->ipinfo.address)
 			jobject_put(ip_info, J_CSTR_TO_JVAL("ip"), jstring_create(connected_service->ipinfo.address));
-		if(connected_service->ipinfo.netmask)
+		if (connected_service->ipinfo.netmask)
 			jobject_put(ip_info, J_CSTR_TO_JVAL("subnet"), jstring_create(connected_service->ipinfo.netmask));
-		if(connected_service->ipinfo.gateway)
+		if (connected_service->ipinfo.gateway)
 			jobject_put(ip_info, J_CSTR_TO_JVAL("gateway"), jstring_create(connected_service->ipinfo.gateway));
 
 		gsize i;
@@ -165,7 +165,7 @@ static void add_connected_network_status(jvalue_ref *reply, connman_service_t *c
 		}
 
 		jobject_put(*reply,  J_CSTR_TO_JVAL("ipInfo"), ip_info);
-        }
+	}
 }
 
 
@@ -187,7 +187,6 @@ static void send_connection_status(jvalue_ref *reply)
 	{
 		add_connected_network_status(reply, connected_service);
 	}
-
 }
 
 /**  @brief Add details about the given service representing a wifi access point
@@ -221,7 +220,7 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 	jobject_put(*network, J_CSTR_TO_JVAL("signalBars"),jnumber_create_i32(signalbars));
 	jobject_put(*network, J_CSTR_TO_JVAL("signalLevel"),jnumber_create_i32(service->strength));
 
-	if(service->state != NULL) 
+	if(service->state != NULL)
 	{
 		if(connman_service_get_state(service->state) != CONNMAN_SERVICE_STATE_IDLE)
 		{
@@ -242,35 +241,36 @@ static bool populate_wifi_networks(jvalue_ref *reply)
 	if(NULL == reply)
 		return;
 
-        bool networks_found = false;
+	bool networks_found = false;
 
-        jvalue_ref network_list = jarray_create(NULL);
+	jvalue_ref network_list = jarray_create(NULL);
 
-        GSList *ap;
+	GSList *ap;
 
-        /* Go through the manager's services list and fill in details
-           for each one of them */
+	/* Go through the manager's services list and fill in details
+	   for each one of them */
 
-        for (ap = manager->services; ap; ap = ap->next)
+	for (ap = manager->services; ap; ap = ap->next)
 	{
-                jvalue_ref network = jobject_create();
-                connman_service_t *service = (connman_service_t *)(ap->data);
-                if(!connman_service_type_wifi(service) || (service->name == NULL))
-                        continue;
-                add_service(service, &network);
+		jvalue_ref network = jobject_create();
+		connman_service_t *service = (connman_service_t *)(ap->data);
+		if(!connman_service_type_wifi(service) || (service->name == NULL))
+			continue;
+		add_service(service, &network);
 
-                jvalue_ref network_list_j = jobject_create();
-                jobject_put(network_list_j, J_CSTR_TO_JVAL("networkInfo"), network);
-                jarray_append(network_list, network_list_j);
+		jvalue_ref network_list_j = jobject_create();
+		jobject_put(network_list_j, J_CSTR_TO_JVAL("networkInfo"), network);
+		jarray_append(network_list, network_list_j);
 
-                networks_found = true;
+		networks_found = true;
 	}
 
-        if(networks_found)
+	if (networks_found)
 	{
-                jobject_put(*reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
+		jobject_put(*reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
 	}
-        return networks_found;
+
+	return networks_found;
 }
 
 
@@ -290,16 +290,16 @@ static bool connect_wifi_with_ssid(const char *ssid)
  	GSList *ap;
 
 	/* Look up for the service with the given ssid */
-        for (ap = manager->services; ap; ap = ap->next)
-        {
-                connman_service_t *service = (connman_service_t *)(ap->data);
-		if((NULL != service->name) && g_str_equal(service->name, ssid))
-		{               
+	for (ap = manager->services; ap; ap = ap->next)
+	{
+		connman_service_t *service = (connman_service_t *)(ap->data);
+		if ((NULL != service->name) && g_str_equal(service->name, ssid))
+		{
 			g_message("ssid %s found, now connecting",service->name);
 			/* Register for 'state changed' signal for this service to update its connection status */
 			connman_service_register_state_changed_cb(service, (connman_state_changed_cb)service_state_changed_callback);
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-			if(connected_service != NULL)
+			if (connected_service != NULL)
 			{
 				if(connected_service != service)
 					connman_service_disconnect(connected_service);
@@ -310,14 +310,15 @@ static bool connect_wifi_with_ssid(const char *ssid)
 			if(connman_service_connect(service))
 			{
 				return true;
-			}					
+			}
 			else
 			{
 				g_message("Error in connecting");
 				return false;
-			}		
+			}
 		}
-        }
+	}
+
 	return false;
 }
 
@@ -336,7 +337,6 @@ static void connect_service_from_profile_list(void)
 		}
 	}
 }
-
 
 /**
  *  @brief Callback function registered with connman manager whenever any of its properties change
@@ -374,8 +374,6 @@ static void manager_property_changed_callback(gpointer data, const gchar *proper
 	}
 }
 
-
-
 /**
  *  @brief Callback function registered with connman manager whenever any of its services change
  *  This would happen whenever any existing service is changed/deleted, or a new service is added
@@ -407,6 +405,7 @@ static void manager_services_changed_callback(gpointer data)
 		}
 		jschema_release(&response_schema);
 	}
+
 	j_release(&reply);
 	g_message("done");
 }
@@ -474,6 +473,7 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 	connman_service_t *service = (connman_service_t *)data;
 	if(NULL == service)
 		return;
+
 	g_message("Service %s state changed to %s",service->name, new_state);
 	int service_state = connman_service_get_state(service->state);
 	switch(service_state)
@@ -506,7 +506,6 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 		/* Else, create a new profile */
 		create_new_profile(service->name);
 	}
-
 }
 
 
@@ -536,21 +535,20 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	if(!input_schema)
 		return false;
 
-    	JSchemaInfo schemaInfo;
-    	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
-    	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
-    	jschema_release(&input_schema);
+	JSchemaInfo schemaInfo;
+	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+	jschema_release(&input_schema);
 
 	if (jis_null(parsedObj))
 	{
-        	LSMessageReplyErrorBadJSON(sh, message);
-        	goto cleanup;
-    	}
-
+		LSMessageReplyErrorBadJSON(sh, message);
+		goto cleanup;
+	}
 
 	jvalue_ref stateObj = {0};
 	gboolean enable_wifi = FALSE;
-	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("state"), &stateObj))
+	if (jobject_get_exists(parsedObj, J_CSTR_TO_BUF("state"), &stateObj))
 	{
 		if (jstring_equal2(stateObj, J_CSTR_TO_BUF("enabled")))
 		{
@@ -559,13 +557,12 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		else if (jstring_equal2(stateObj, J_CSTR_TO_BUF("disabled")))
 		{
 			enable_wifi = FALSE;
-
 		}
 		else
 		{
-        		LSMessageReplyErrorBadJSON(sh, message);
-        		goto cleanup;
-		}		
+			LSMessageReplyErrorBadJSON(sh, message);
+			goto cleanup;
+		}
 	}
 
 	/*
@@ -573,19 +570,19 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	 *  or disabling an already disabled service
 	 */
 
-	if(enable_wifi && is_wifi_powered()) 
+	if (enable_wifi && is_wifi_powered()) 
 	{
 		LSMessageReplyCustomError(sh, message, "Already Enabled");
 		goto cleanup;
 	}
-	else if(!enable_wifi && !is_wifi_powered())
+	else if (!enable_wifi && !is_wifi_powered())
 	{
 		LSMessageReplyCustomError(sh, message, "Already Disabled");
 		goto cleanup;
 	}
 
 	set_wifi_state(enable_wifi);
-	
+
 	LSMessageReplySuccess(sh,message);
 
 cleanup:
@@ -617,30 +614,30 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 	if(!wifi_technology_status_check(sh, message))
 		return true;
 
-        if(!is_wifi_powered())
+	if(!is_wifi_powered())
 	{
-                LSMessageReplyCustomError(sh,message,"WiFi switched off");
+		LSMessageReplyCustomError(sh,message,"WiFi switched off");
 		return true;
 	}
 
 	jvalue_ref parsedObj = {0};
-        jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-        if(!input_schema)
-                return false;
+	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!input_schema)
+		return false;
 
-        JSchemaInfo schemaInfo;
-        jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
-        parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
-        jschema_release(&input_schema);
+	JSchemaInfo schemaInfo;
+	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+	jschema_release(&input_schema);
 
-        if (jis_null(parsedObj))
+	if (jis_null(parsedObj))
 	{
-                LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
-        }
+		LSMessageReplyErrorBadJSON(sh, message);
+		goto cleanup;
+	}
 
-        jvalue_ref ssidObj = {0};
-        jvalue_ref profileIdObj = {0};
+	jvalue_ref ssidObj = {0};
+	jvalue_ref profileIdObj = {0};
 	char *ssid;
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("ssid"), &ssidObj))
@@ -655,6 +652,7 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 			LSMessageReplyErrorInvalidParams(sh, message);
 			goto cleanup;
 		}
+
 		int profile_id = 0;
 		jnumber_get_i32(profileIdObj, &profile_id);
 		wifi_profile_t *profile = get_profile_by_id(profile_id);
@@ -663,6 +661,7 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 			LSMessageReplyCustomError(sh, message, "Profile not found");
 			goto cleanup;
 		}
+
 		ssid = g_strdup(profile->ssid);
 	}
 
@@ -729,7 +728,7 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 	}
 
 	/* Scan the network for all available access points by making a connman call*/
-        connman_technology_scan_network(wifi_tech);
+	connman_technology_scan_network(wifi_tech);
 
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
@@ -813,9 +812,9 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 	
 	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror))
 	{
-        	LSErrorPrint(&lserror, stderr);
-        	LSErrorFree(&lserror);
-    	}
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 
 	jschema_release(&response_schema);
 
@@ -851,6 +850,7 @@ static void add_wifi_profile_list(jvalue_ref *reply)
 		add_wifi_profile(&profile_j, profile);
 		jarray_append(profile_list_j, profile_j);
 	}
+
 	jobject_put(*reply, J_CSTR_TO_JVAL("profileList"), profile_list_j);
 }
 
@@ -904,7 +904,7 @@ cleanup:
 	}
 
 	j_release(&reply);
-    	return true;
+	return true;
 }
 
 /**
@@ -927,26 +927,26 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 	LSError lserror;
 	LSErrorInit(&lserror);
 
-        jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-        if(!input_schema)
-                return false;
+	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!input_schema)
+		return false;
 
-        JSchemaInfo schemaInfo;
-        jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
-        parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
-        jschema_release(&input_schema);
+	JSchemaInfo schemaInfo;
+	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+	jschema_release(&input_schema);
 
-        if (jis_null(parsedObj))
+	if (jis_null(parsedObj))
 	{
-                LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
-        }
+		LSMessageReplyErrorBadJSON(sh, message);
+		goto cleanup;
+	}
 
-        jvalue_ref profileIdObj = {0};
+	jvalue_ref profileIdObj = {0};
 
-	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
+	if (jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
 	{
-		if(!jis_number(profileIdObj))
+		if (!jis_number(profileIdObj))
 		{
 			LSMessageReplyErrorInvalidParams(sh, message);
 			goto cleanup;
@@ -955,7 +955,7 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 	}
 
 	wifi_profile_t *profile = get_profile_by_id(profile_id);
-	if(NULL == profile)
+	if (NULL == profile)
 	{
 		LSMessageReplyCustomError(sh, message, "Profile not found");
 		goto cleanup;
@@ -967,7 +967,7 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 	}
 
 	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-	if(!response_schema)
+	if (!response_schema)
 	{
 		LSMessageReplyErrorUnknown(sh,message);
 		goto cleanup;
@@ -977,7 +977,7 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 	{
 		LSErrorPrint(&lserror, stderr);
 		LSErrorFree(&lserror);
-    	}
+	}
 
 	jschema_release(&response_schema);
 
@@ -1014,35 +1014,36 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 	LSError lserror;
 	LSErrorInit(&lserror);
 
-        jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-        if(!input_schema)
-                return false;
+	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!input_schema)
+		return false;
 
-        JSchemaInfo schemaInfo;
-        jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
-        parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
-        jschema_release(&input_schema);
+	JSchemaInfo schemaInfo;
+	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+	jschema_release(&input_schema);
 
-        if (jis_null(parsedObj))
+	if (jis_null(parsedObj))
 	{
-                LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
-        }
+		LSMessageReplyErrorBadJSON(sh, message);
+		goto cleanup;
+	}
 
-        jvalue_ref profileIdObj = {0};
+	jvalue_ref profileIdObj = {0};
 
-	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
+	if (jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
 	{
 		if(!jis_number(profileIdObj))
 		{
 			LSMessageReplyErrorInvalidParams(sh, message);
 			goto cleanup;
 		}
+
 		jnumber_get_i32(profileIdObj, &profile_id);
 	}
 
 	wifi_profile_t *profile = get_profile_by_id(profile_id);
-	if(NULL == profile)
+	if (NULL == profile)
 	{
 		LSMessageReplyCustomError(sh, message, "Profile not found");
 		goto cleanup;
@@ -1140,10 +1141,10 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 
 cleanup:
 	if (LSErrorIsSet(&lserror))
-        {
-                LSErrorPrint(&lserror, stderr);
-                LSErrorFree(&lserror);
-        }
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
 
 	j_release(&reply);
 	return true;
@@ -1154,15 +1155,15 @@ cleanup:
  */
 
 static LSMethod wifi_methods[] = {
-    { LUNA_METHOD_GETPROFILELIST,	handle_get_profilelist_command },
-    { LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
-    { LUNA_METHOD_GETINFO,		handle_get_info_command },
-    { LUNA_METHOD_SETSTATE,		handle_set_state_command },
-    { LUNA_METHOD_CONNECT,		handle_connect_command },
-    { LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
-    { LUNA_METHOD_DELETEPROFILE,	handle_delete_profile_command },
-    { LUNA_METHOD_GETSTATUS,		handle_get_status_command },
-    { },
+	{ LUNA_METHOD_GETPROFILELIST,	handle_get_profilelist_command },
+	{ LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
+	{ LUNA_METHOD_GETINFO,		handle_get_info_command },
+	{ LUNA_METHOD_SETSTATE,		handle_set_state_command },
+	{ LUNA_METHOD_CONNECT,		handle_connect_command },
+	{ LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
+	{ LUNA_METHOD_DELETEPROFILE,	handle_delete_profile_command },
+	{ LUNA_METHOD_GETSTATUS,		handle_get_status_command },
+	{ },
 };
 
 /** 
@@ -1237,13 +1238,13 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 	return 0;
 
 Exit:
-        if (LSErrorIsSet(&lserror))
+	if (LSErrorIsSet(&lserror))
 	{
 		LSErrorPrint(&lserror, stderr);
 		LSErrorFree(&lserror);
 	}
 
-        if (pLsHandle)
+	if (pLsHandle)
 	{
 		LSErrorInit (&lserror);
 		if(LSUnregister(pLsHandle, &lserror) == false)
@@ -1253,14 +1254,15 @@ Exit:
 		}
 	}
 
-        if (pLsPublicHandle)
-        {
+	if (pLsPublicHandle)
+	{
 		LSErrorInit (&lserror);
 		if(LSUnregister(pLsPublicHandle, &lserror) == false)
 		{
 			LSErrorPrint(&lserror, stderr);
 			LSErrorFree(&lserror);
 		}
-        }
+	}
+
 	return -1;
 }
