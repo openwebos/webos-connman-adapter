@@ -77,7 +77,8 @@ gchar *connman_service_get_webos_state(int connman_state)
 			return "ipConfigured";
 		case CONNMAN_SERVICE_STATE_FAILURE:
 			return "ipFailed";
-        	break;
+		default:
+			break;
     }
 
     return "notAssociated";
