@@ -46,8 +46,8 @@ static LSHandle *pLsHandle, *pLsPublicHandle;
 
 static connman_manager_t *manager = NULL;
 
-/* Constant for mapping access point signal strength to signal levels ( 1 to 5) */
-#define MAX_SIGNAL_BARS         5
+/* Constant for mapping access point signal strength to signal levels (1 to 3) */
+#define MAX_SIGNAL_BARS         3
 
 /**
  *  @brief Returns true if wifi technology is powered on
