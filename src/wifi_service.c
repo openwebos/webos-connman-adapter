@@ -55,8 +55,8 @@ static LSHandle *pLsHandle, *pLsPublicHandle;
 connman_manager_t *manager = NULL;
 static connman_agent_t *agent = NULL;
 
-/* Constant for mapping access point signal strength to signal levels ( 1 to 5) */
-#define MAX_SIGNAL_BARS         5
+/* Constant for mapping access point signal strength to signal levels (1 to 3) */
+#define MAX_SIGNAL_BARS         3
 
 static connection_settings_t* connection_settings_new(void)
 {
