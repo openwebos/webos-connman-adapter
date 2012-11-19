@@ -580,6 +580,7 @@ connman_manager_t *connman_manager_new (void)
 	{
 		g_error("%s", error->message);
 		g_error_free(error);
+		g_free(manager);
 		return NULL;
 	}
 	
