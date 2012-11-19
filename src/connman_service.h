@@ -74,12 +74,14 @@ enum {
 	CONNMAN_SERVICE_STATE_FAILURE
 };
 
+typedef void (*connman_service_connect_cb)(gboolean success, gpointer user_data);
+
 gboolean connman_service_type_wifi(connman_service_t *service);
 gboolean connman_service_type_ethernet(connman_service_t *service);
 gchar *connman_service_get_webos_state(int connman_state);
 int connman_service_get_state(const gchar *state);
 
-gboolean connman_service_connect(connman_service_t *service);
+gboolean connman_service_connect(connman_service_t *service, connman_service_connect_cb cb, gpointer user_data);
 gboolean connman_service_disconnect(connman_service_t *service);
 gboolean connman_service_get_ipinfo(connman_service_t *service);
 void connman_service_update_properties(connman_service_t *service, GVariant *service_v);

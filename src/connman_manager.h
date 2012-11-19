@@ -48,6 +48,8 @@ connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *ma
 connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
 void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);
 void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func);
+gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar *path);
+gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gchar *path);
 
 connman_manager_t *connman_manager_new(void);
 void connman_manager_free (connman_manager_t *manager);

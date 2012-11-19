@@ -24,6 +24,7 @@
  */
 
 #include "connman_service.h"
+#include "utils.h"
 
 /**
  * @brief  Check if the type of the service is wifi
@@ -116,6 +117,28 @@ int connman_service_get_state(const gchar *state)
 	return result;
 }
 
+static void connect_callback(GDBusConnection *connection, GAsyncResult *res, gpointer user_data)
+{
+	GError *error = NULL;
+	struct cb_data *cbd = user_data;
+	connman_service_t *service = cbd->user;
+	connman_service_connect_cb cb = cbd->cb;
+	gboolean ret = FALSE;
+
+	ret = connman_interface_service_call_connect_finish(service->remote, res, &error);
+	if (error)
+	{
+		g_message("Error: %s", error->message);
+		/* If the error is "AlreadyConnected" its not an error */
+		if (NULL != g_strrstr(error->message,"AlreadyConnected"))
+			ret = TRUE;
+		g_error_free(error);
+	}
+
+	if (cb != NULL)
+		cb(ret, cbd->data);
+}
+
 /**
  * @brief  Connect to a remote connman service
  *
@@ -123,25 +146,18 @@ int connman_service_get_state(const gchar *state)
  *
  */
 
-gboolean connman_service_connect(connman_service_t *service)
+gboolean connman_service_connect(connman_service_t *service, connman_service_connect_cb cb, gpointer user_data)
 {
-	if(NULL == service)
+	struct cb_data *cbd;
+
+	if (NULL == service)
 		return FALSE;
 
-	GError *error = NULL;
-	gboolean ret = TRUE;
+	cbd = cb_data_new(cb, user_data);
+	cbd->user = service;
+	connman_interface_service_call_connect(service->remote, NULL, connect_callback, cbd);
 
-	connman_interface_service_call_connect_sync(service->remote, NULL, &error);
-	if (error)
-	{
-		g_message("Error: %s", error->message);
-		/* If the error is "AlreadyConnected" its not an error */
-		if(NULL == g_strrstr(error->message,"AlreadyConnected"))
-			ret = FALSE;
-		g_error_free(error);
-	}
-
-	return ret;
+	return TRUE;
 }
 
 

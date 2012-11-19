@@ -29,6 +29,13 @@
 
 #include <luna-service2/lunaservice.h>
 
+typedef struct luna_service_request {
+	LSHandle *handle;
+	LSMessage *message;
+} luna_service_request_t;
+
+luna_service_request_t* luna_service_request_new(LSHandle *handle, LSMessage *message);
+
 extern void LSMessageReplyErrorUnknown(LSHandle *sh, LSMessage *message);
 extern void LSMessageReplyErrorInvalidParams(LSHandle *sh, LSMessage *message);
 extern void LSMessageReplyErrorBadJSON(LSHandle *sh, LSMessage *message);
