@@ -43,11 +43,11 @@ typedef struct connman_technology
 	connman_property_changed_cb handle_property_change_fn;
 } connman_technology_t;
 
-extern gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
-extern gboolean connman_technology_scan_network(connman_technology_t *technology);
-extern void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func);
+gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
+gboolean connman_technology_scan_network(connman_technology_t *technology);
+void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func);
 
-extern connman_technology_t *connman_technology_new(GVariant *variant);
-extern void connman_technology_free (gpointer data, gpointer user_data);
+connman_technology_t *connman_technology_new(GVariant *variant);
+void connman_technology_free (gpointer data, gpointer user_data);
 
 #endif /* CONNMAN_TECHNOLOGY_H_ */

@@ -43,14 +43,14 @@ typedef struct connman_manager
 }connman_manager_t;
 
 
-extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
-extern connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
-extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
-extern void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);
-extern void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func);
+gboolean connman_manager_is_manager_available (connman_manager_t *manager);
+connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
+connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
+void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);
+void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func);
 
-extern connman_manager_t *connman_manager_new(void);
-extern void connman_manager_free (connman_manager_t *manager);
+connman_manager_t *connman_manager_new(void);
+void connman_manager_free (connman_manager_t *manager);
 
 #endif /* CONNMAN_MANAGER_H_ */
 

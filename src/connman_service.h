@@ -74,19 +74,19 @@ enum {
 	CONNMAN_SERVICE_STATE_FAILURE
 };
 
-extern gboolean connman_service_type_wifi(connman_service_t *service);
-extern gboolean connman_service_type_ethernet(connman_service_t *service);
-extern gchar *connman_service_get_webos_state(int connman_state);
-extern int connman_service_get_state(const gchar *state);
+gboolean connman_service_type_wifi(connman_service_t *service);
+gboolean connman_service_type_ethernet(connman_service_t *service);
+gchar *connman_service_get_webos_state(int connman_state);
+int connman_service_get_state(const gchar *state);
 
-extern gboolean connman_service_connect(connman_service_t *service);
-extern gboolean connman_service_disconnect(connman_service_t *service);
-extern gboolean connman_service_get_ipinfo(connman_service_t *service);
-extern void connman_service_update_properties(connman_service_t *service, GVariant *service_v);
-extern void connman_service_register_state_changed_cb(connman_service_t *service, connman_state_changed_cb func);
+gboolean connman_service_connect(connman_service_t *service);
+gboolean connman_service_disconnect(connman_service_t *service);
+gboolean connman_service_get_ipinfo(connman_service_t *service);
+void connman_service_update_properties(connman_service_t *service, GVariant *service_v);
+void connman_service_register_state_changed_cb(connman_service_t *service, connman_state_changed_cb func);
 
-extern connman_service_t *connman_service_new(GVariant *variant);
-extern void connman_service_free (gpointer data, gpointer user_data);
+connman_service_t *connman_service_new(GVariant *variant);
+void connman_service_free (gpointer data, gpointer user_data);
 
 #endif /* CONNMAN_SERVICE_H_ */
 
