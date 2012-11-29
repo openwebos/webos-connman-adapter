@@ -92,7 +92,6 @@ void create_new_profile(gchar *ssid)
 
 	wifi_profile_list = g_slist_append(wifi_profile_list, (gpointer)new_profile);
 	/* Store wifi profiles */
-	g_message("*********** STORING WIFI PROFILE %s************",ssid);
 	store_wifi_setting(WIFI_PROFILELIST_SETTING, NULL);
 }
 

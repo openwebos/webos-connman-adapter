@@ -17,6 +17,6 @@
 # LICENSE@@@
 
 [D-BUS Service]
-Name=com.palm.wifi
+Name=com.palm.wifi;com.palm.connectionmanager
 Exec="@WEBOS_INSTALL_SBINDIR@/webos-connman-adapter
 Type=static

@@ -16,20 +16,34 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  common.c
+ *
+ * @brief Implements some of the common utility functions
+ *
+ */
 
-#ifndef _CONNMAN_COMMON_H_
-#define _CONNMAN_COMMON_H_
+#include <glib.h>
 
-#include <gio/gio.h>
-#include <glib-object.h>
+#include "common.h"
 
-#include "connman-interface.h"
+/**
+ *  @brief Check if the connman manager is not in offline mode
+ *   Send an error luna message if it is in offline mode
+ *
+ *  @param manager
+ *  @param sh
+ *  @param message
+ */
 
-#define CONNMAN_WIFI_INTERFACE_NAME	"@WIFI_IFACE_NAME@"
-#define CONNMAN_WIRED_INTERFACE_NAME	"@WIRED_IFACE_NAME@"
 
-typedef void (*connman_property_changed_cb)(gpointer , gchar *, GVariant *);
-typedef void (*connman_state_changed_cb)(gpointer , gchar *);
-
-#endif /* _CONNMAN_COMMON_H_ */
+gboolean connman_status_check(connman_manager_t *manager, LSHandle *sh, LSMessage *message)
+{
+        if(!connman_manager_is_manager_available(manager))
+        {
+                LSMessageReplyCustomError(sh, message, "Connman service unavailable");
+                return false;
+        }
+        return true;
+}
 

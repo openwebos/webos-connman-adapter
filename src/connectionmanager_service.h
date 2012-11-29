@@ -1,6 +1,6 @@
 /* @@@LICENSE
 *
-*      Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+* Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,20 +16,26 @@
 *
 * LICENSE@@@ */
 
+/**
+ * @file  connectionmanager_service.h
+ *
+ */
 
-#ifndef _CONNMAN_COMMON_H_
-#define _CONNMAN_COMMON_H_
+#ifndef _CONNECTIONMANAGER_SERVICE_H_
+#define _CONNECTIONMANAGER_SERVICE_H_
 
-#include <gio/gio.h>
-#include <glib-object.h>
+#include <luna-service2/lunaservice.h>
 
-#include "connman-interface.h"
+#define CONNECTIONMANAGER_LUNA_SERVICE_NAME "com.palm.connectionmanager"
 
-#define CONNMAN_WIFI_INTERFACE_NAME	"@WIFI_IFACE_NAME@"
-#define CONNMAN_WIRED_INTERFACE_NAME	"@WIRED_IFACE_NAME@"
+/**
+ * @name Luna Connectionmanager Method Names
+ * @{
+ */
+#define LUNA_METHOD_GETSTATUS		"getstatus"
+#define LUNA_METHOD_SETIPV4		"setipv4"
+#define LUNA_METHOD_SETDNS		"setdns"
 
-typedef void (*connman_property_changed_cb)(gpointer , gchar *, GVariant *);
-typedef void (*connman_state_changed_cb)(gpointer , gchar *);
+extern void connectionmanager_send_status(void);
 
-#endif /* _CONNMAN_COMMON_H_ */
-
+#endif /* _CONNECTIONMANAGER_SERVICE_H_ */

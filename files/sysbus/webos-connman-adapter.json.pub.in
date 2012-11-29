@@ -2,7 +2,7 @@
     "role": {
         "exeName":"@WEBOS_INSTALL_SBINDIR@/webos-connman-adapter",
         "type": "regular",
-        "allowedNames": ["com.palm.wifi", ""]
+        "allowedNames": ["com.palm.wifi", "com.palm.connectionmanager"]
     },
     "permissions": [
         {
@@ -10,5 +10,11 @@
             "inbound":["*"],
             "outbound":["*"]
         }
+        {
+            "service":"com.palm.connectionmanager",
+            "inbound":["*"],
+            "outbound":["*"]
+        }
+
     ]
 }

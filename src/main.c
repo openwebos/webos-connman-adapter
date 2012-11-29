@@ -57,6 +57,12 @@ main(int argc, char **argv)
 	return -1; 
     }  
 
+    if(initialize_connectionmanager_ls2_calls(mainloop) < 0)
+    {
+	g_error("Error in initializing com.palm.connectionmanager service");
+	return -1;
+    }
+
     g_main_loop_run(mainloop);
 
     g_main_loop_unref(mainloop);

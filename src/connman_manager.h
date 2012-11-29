@@ -36,7 +36,8 @@ typedef void (*connman_services_changed_cb)(gpointer);
 typedef struct connman_manager
 {
 	ConnmanInterfaceManager	*remote;
-	GSList	*services;
+	GSList	*wifi_services;
+	GSList	*wired_services;
 	GSList	*technologies;
 	connman_property_changed_cb	handle_property_change_fn;
 	connman_services_changed_cb	handle_services_change_fn;
@@ -44,6 +45,7 @@ typedef struct connman_manager
 
 
 extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
+extern gboolean connman_manager_is_manager_online (connman_manager_t *manager);
 extern connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
 extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
 extern void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);

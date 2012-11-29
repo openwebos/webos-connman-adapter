@@ -30,11 +30,12 @@ webos_modules_init(1 0 0 QUALIFIER RC4)
 webos_component(1 0 0)
 
 set(WIFI_IFACE_NAME "wlan0" CACHE STRING "WiFi interface name")
+set(WIRED_IFACE_NAME "eth0" CACHE STRING "Wired interface name")
 
 find_program(GDBUS_CODEGEN_EXECUTABLE NAMES gdbus-codegen DOC "gdbus-codegen executable")
 if(NOT GDBUS_CODEGEN_EXECUTABLE)
 	message(FATAL_ERROR "Executable gdbus-codegen not found")
-endif(GDBUS_CODEGEN_EXECUTABLE)
+endif()
 
 include(FindPkgConfig)
 

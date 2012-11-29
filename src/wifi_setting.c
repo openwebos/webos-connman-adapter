@@ -339,7 +339,6 @@ gboolean store_wifi_setting(wifi_setting_type_t setting, void *data)
 	gboolean ret = FALSE;
 
 	lpErr = LPAppGetHandle(WIFI_LUNA_PREFS_ID, &handle);
-	g_message("Getting handle for %s ",WIFI_LUNA_PREFS_ID);
         if (lpErr)
         {
 		g_message("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);

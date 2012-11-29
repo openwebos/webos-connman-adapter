@@ -77,10 +77,11 @@ gchar *connman_service_get_webos_state(int connman_state)
 			return "ipConfigured";
 		case CONNMAN_SERVICE_STATE_FAILURE:
 			return "ipFailed";
-        	break;
-    }
+		default:
+			break;
+	}
 
-    return "notAssociated";
+	return "notAssociated";
 }
 
 /**
@@ -167,6 +168,68 @@ gboolean connman_service_disconnect(connman_service_t *service)
 	return TRUE;
 }
 
+/**
+ * @brief  Sets ipv4 properties for the connman service
+ *
+ * @param  service
+ *
+ */
+
+gboolean connman_service_set_ipv4(connman_service_t *service, ipv4info_t *ipv4)
+{
+	if(NULL == service || NULL == ipv4)
+		return FALSE;
+
+	GVariantBuilder *ipv4_b;
+	GVariant *ipv4_v;
+
+	ipv4_b = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+	if(NULL != ipv4->method)
+		g_variant_builder_add (ipv4_b, "{sv}", "Method", g_variant_new_string(ipv4->method));
+	if(NULL != ipv4->address)
+		g_variant_builder_add (ipv4_b, "{sv}", "Address", g_variant_new_string(ipv4->address));
+	if(NULL != ipv4->netmask)
+		g_variant_builder_add (ipv4_b, "{sv}", "Netmask", g_variant_new_string(ipv4->netmask));
+	if(NULL != ipv4->gateway)
+		g_variant_builder_add (ipv4_b, "{sv}", "Gateway", g_variant_new_string(ipv4->gateway));
+	ipv4_v = g_variant_builder_end (ipv4_b);
+
+	GError *error = NULL;
+
+	connman_interface_service_call_set_property_sync(service->remote, "IPv4.Configuration", g_variant_new_variant(ipv4_v), NULL, &error);
+	if (error)
+	{
+		g_message("Error: %s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+/**
+ * @brief  Sets nameservers for the connman service
+ *
+ * @param  service
+ *
+ */
+
+gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
+{
+	if(NULL == service || NULL == dns)
+		return FALSE;
+
+	GError *error = NULL;
+
+	connman_interface_service_call_set_property_sync(service->remote, "Nameservers.Configuration",
+			g_variant_new_variant(g_variant_new_strv(dns, g_strv_length(dns))), NULL, &error);
+	if (error)
+	{
+		g_message("Error: %s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+	return TRUE;
+}
 
 /**
  * @brief  Get all the network related information for a connected service (in online state)
@@ -179,6 +242,10 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 {
 	if(NULL == service)
 		return FALSE;
+
+	// If iface is not NULL, it means the service properties are already updated
+	if(NULL != service->ipinfo.iface)
+		return TRUE;
 
 	GError *error = NULL;
 	GVariant *properties;
@@ -227,24 +294,29 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 				GVariant *ipv4 = g_variant_get_child_value(va, j);
 				GVariant *ikey_v = g_variant_get_child_value(ipv4, 0);
 				const gchar *ikey = g_variant_get_string(ikey_v, NULL);
-
+				if(g_str_equal(ikey, "Method"))
+				{
+					GVariant *netmaskv = g_variant_get_child_value(ipv4, 1);
+					GVariant *netmaskva = g_variant_get_variant(netmaskv);
+					service->ipinfo.ipv4.method = g_variant_dup_string(netmaskva, NULL);
+				}
 				if(g_str_equal(ikey, "Netmask"))
 				{
 					GVariant *netmaskv = g_variant_get_child_value(ipv4, 1);
 					GVariant *netmaskva = g_variant_get_variant(netmaskv);
-					service->ipinfo.netmask = g_variant_dup_string(netmaskva, NULL);
+					service->ipinfo.ipv4.netmask = g_variant_dup_string(netmaskva, NULL);
 				}
 				if(g_str_equal(ikey, "Address"))
 				{
 					GVariant *addressv = g_variant_get_child_value(ipv4, 1);
 					GVariant *addressva = g_variant_get_variant(addressv);
-					service->ipinfo.address = g_variant_dup_string(addressva, NULL);
+					service->ipinfo.ipv4.address = g_variant_dup_string(addressva, NULL);
 				}
 				if(g_str_equal(ikey, "Gateway"))
 				{
 					GVariant *gatewayv = g_variant_get_child_value(ipv4, 1);
 					GVariant *gatewayva = g_variant_get_variant(gatewayv);
-					service->ipinfo.gateway = g_variant_dup_string(gatewayva, NULL);
+					service->ipinfo.ipv4.gateway = g_variant_dup_string(gatewayva, NULL);
 				}
 			  }
 			}
@@ -422,9 +494,10 @@ void connman_service_free(gpointer data, gpointer user_data)
 	g_free(service->state);
 	g_strfreev(service->security);
 	g_free(service->ipinfo.iface);
-	g_free(service->ipinfo.address);
-	g_free(service->ipinfo.netmask);
-	g_free(service->ipinfo.gateway);
+	g_free(service->ipinfo.ipv4.method);
+	g_free(service->ipinfo.ipv4.address);
+	g_free(service->ipinfo.ipv4.netmask);
+	g_free(service->ipinfo.ipv4.gateway);
 	g_strfreev(service->ipinfo.dns);
 
 	if(service->sighandler_id)

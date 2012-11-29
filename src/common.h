@@ -17,19 +17,14 @@
 * LICENSE@@@ */
 
 
-#ifndef _CONNMAN_COMMON_H_
-#define _CONNMAN_COMMON_H_
+#ifndef _COMMON_H_
+#define _COMMON_H_
 
-#include <gio/gio.h>
-#include <glib-object.h>
+#include "connman_manager.h"
+#include "lunaservice_utils.h"
 
-#include "connman-interface.h"
+extern connman_manager_t *manager;
+extern gboolean connman_status_check(connman_manager_t *manager, LSHandle *sh, LSMessage *message);
 
-#define CONNMAN_WIFI_INTERFACE_NAME	"@WIFI_IFACE_NAME@"
-#define CONNMAN_WIRED_INTERFACE_NAME	"@WIRED_IFACE_NAME@"
-
-typedef void (*connman_property_changed_cb)(gpointer , gchar *, GVariant *);
-typedef void (*connman_state_changed_cb)(gpointer , gchar *);
-
-#endif /* _CONNMAN_COMMON_H_ */
+#endif /* _COMMON_H_ */
 
