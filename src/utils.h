@@ -1,6 +1,6 @@
 /* @@@LICENSE
 *
-*      Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+*      Copyright (c) 2012 Simon Busch <morphis@gravedo.de>
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,24 +16,25 @@
 *
 * LICENSE@@@ */
 
-/**
- * @file  wifi_setting.h
- *
- */
+#ifndef UTILS_H_
+#define UTILS_H_
 
-#ifndef _WIFI_SETTING_H_
-#define _WIFI_SETTING_H_
+struct cb_data {
+	void *cb;
+	void *data;
+	void *user;
+};
 
-#define WIFI_LUNA_PREFS_ID      WIFI_LUNA_SERVICE_NAME
-
-typedef enum
+static inline struct cb_data *cb_data_new(void *cb, void *data)
 {
-	WIFI_NULL_SETTING,
-	WIFI_PROFILELIST_SETTING,
-	WIFI_LAST_SETTING,
-} wifi_setting_type_t;
+	struct cb_data *ret;
 
-extern gboolean load_wifi_setting(wifi_setting_type_t setting, void *data);
-extern gboolean store_wifi_setting(wifi_setting_type_t setting, void *data);
+	ret = g_new0(struct cb_data, 1);
+	ret->cb = cb;
+	ret->data = data;
+	ret->user = NULL;
 
-#endif /* _WIFI_SETTING_H_ */
+	return ret;
+}
+
+#endif

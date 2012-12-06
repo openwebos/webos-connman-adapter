@@ -145,7 +145,7 @@ static gboolean service_on_wifi_iface(GVariant	*service_v)
 					else
 						return FALSE;
 				}
-		  	}
+			}
 		}
 	}
 	return FALSE;
@@ -189,6 +189,7 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 			ret = TRUE;
 		}
 	}
+
 	return ret;
 }
 
@@ -218,8 +219,9 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 				g_message("Removing service : %s",service->name);
 				remove_list = g_slist_append(remove_list, service);
 				break;
-    			}
+			}
 		}
+
 		*services_removed++;
 	}
 
@@ -234,6 +236,7 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 		connman_service_free(service, NULL);
 		ret = TRUE;
 	}
+
 	return ret;
 }
 
@@ -281,7 +284,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 {
 	if(NULL == manager)
 		return;
-	
+
 	GError *error = NULL;
 	GVariant *services;
 	gsize i;
@@ -310,6 +313,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 			}
 		}
 	}
+
 	return TRUE;
 }
 
@@ -444,7 +448,6 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 	}
 
 	return NULL;
-
 }
 
 /**
@@ -550,6 +553,57 @@ void connman_manager_register_services_changed_cb(connman_manager_t *manager, co
 	manager->handle_services_change_fn = func;
 }
 
+/**
+ * @brief Register a agent instance on the specified dbus path with the manager
+ *
+ * @param DBus object path where the agents is available
+ * @return TRUE, if agent was successfully registered with the manager, FALSE otherwise.
+ **/
+
+gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar *path)
+{
+	GError *error = NULL;
+
+	if (NULL == manager)
+		return FALSE;
+
+	connman_interface_manager_call_register_agent_sync(manager->remote,
+		path, NULL, &error);
+	if (error) {
+		g_error("%s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+
+	g_message("Registered agent successfully with connman");
+
+	return TRUE;
+}
+
+/**
+ * @brief Unegister a agent instance on the specified dbus path from the manager
+ *
+ * @param DBus object path where the agents is available
+ * @return TRUE, if agent was successfully unregistered from the manager, FALSE otherwise.
+ **/
+
+gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gchar *path)
+{
+	GError *error;
+
+	if (NULL == manager)
+		return FALSE;
+
+	connman_interface_manager_call_unregister_agent_sync(manager->remote,
+		path, NULL, &error);
+	if (error) {
+		g_error("%s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+
+	return TRUE;
+}
 
 /**
  * @brief  Initialize a new manager instance and update its services and technologies list
@@ -578,6 +632,7 @@ connman_manager_t *connman_manager_new (void)
 	{
 		g_error("%s", error->message);
 		g_error_free(error);
+		g_free(manager);
 		return NULL;
 	}
 	
@@ -594,7 +649,6 @@ connman_manager_t *connman_manager_new (void)
 
 	g_signal_connect(G_OBJECT(manager->remote), "services-changed",
 		   G_CALLBACK(services_changed_cb), manager);
-
 
 	connman_manager_add_technologies(manager);
 	connman_manager_add_services(manager);

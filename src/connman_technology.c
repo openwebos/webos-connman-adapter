@@ -77,6 +77,7 @@ gboolean connman_technology_scan_network(connman_technology_t *technology)
 		g_error_free(error);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -95,7 +96,7 @@ property_changed_cb(ConnmanInterfaceTechnology *proxy,const gchar * property, GV
               connman_technology_t      *technology)
 {
 	if(NULL != technology->handle_property_change_fn)
-                (technology->handle_property_change_fn)((gpointer)technology, property, v);
+		(technology->handle_property_change_fn)((gpointer)technology, property, v);
 }
 
 
@@ -150,8 +151,7 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 	technology->handle_property_change_fn = NULL;
 
 	technology->sighandler_id = g_signal_connect_data(G_OBJECT(technology->remote), "property-changed",
-                   G_CALLBACK(property_changed_cb), technology, NULL, 0);
-
+					G_CALLBACK(property_changed_cb), technology, NULL, 0);
 
 	properties = g_variant_get_child_value(variant, 1);
 
@@ -201,5 +201,4 @@ void connman_technology_free(gpointer data, gpointer user_data)
 
 	g_free(technology);
 	technology = NULL;
-
 }

@@ -38,11 +38,11 @@
  */
 static const char* SettingKey[] =
 {
-    "Null-DO-NOT-USE", /**< Marker used to indicate the start of setting keys */
+	"Null-DO-NOT-USE", /**< Marker used to indicate the start of setting keys */
 
-    "profileList", /**< Setting key for profile list */
+	"profileList", /**< Setting key for profile list */
 
-    "Last-DO-NOT-USE" /**< Marker used to indicate the end of setting keys */
+	"Last-DO-NOT-USE" /**< Marker used to indicate the end of setting keys */
 };
 
 /**
@@ -107,7 +107,6 @@ Exit:
  * which may contain secret passwords / passphrases
  */
 
-
 static char* wifi_setting_decrypt(const char *input_str, const char *key)
 {
 	BF_KEY *pBfKey = g_new0(BF_KEY, 1);
@@ -130,7 +129,6 @@ static char* wifi_setting_decrypt(const char *input_str, const char *key)
 	}
 
 	BF_set_key(pBfKey, strlen(key), (const unsigned char*)key);
-
 
 	b64str = g_base64_decode((const gchar*)(input_str), (gsize*)(&len) );
 	if (b64str)
@@ -164,7 +162,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 	gboolean ret = FALSE;
 	jvalue_ref wifiProfileObj, ssidObj;
 
-	if(jobject_get_exists(profileObj, J_CSTR_TO_BUF("wifiProfile"), &wifiProfileObj))
+	if (jobject_get_exists(profileObj, J_CSTR_TO_BUF("wifiProfile"), &wifiProfileObj))
 	{
 		raw_buffer enc_profile_buf = jstring_get(wifiProfileObj);
 		gchar *enc_profile = g_strdup(enc_profile_buf.m_str);
@@ -172,7 +170,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 
 		jvalue_ref parsedObj = {0};
 		jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-		if(!input_schema)
+		if (!input_schema)
 			goto Exit;
 
 		JSchemaInfo schemaInfo;
@@ -185,7 +183,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 			goto Exit;
 		}
 
-		if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("ssid"), &ssidObj))
+		if (jobject_get_exists(parsedObj,J_CSTR_TO_BUF("ssid"), &ssidObj))
 		{
 			raw_buffer ssid_buf = jstring_get(ssidObj);
 			gchar *ssid = g_strdup(ssid_buf.m_str);
@@ -221,8 +219,8 @@ gboolean load_wifi_setting(wifi_setting_type_t setting, void *data)
 	gboolean ret = FALSE;
 
 	lpErr = LPAppGetHandle(WIFI_LUNA_PREFS_ID, &handle);
-        if (lpErr)
-        {
+	if (lpErr)
+	{
 		g_message("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
 		goto Exit;
 	}
@@ -231,11 +229,10 @@ gboolean load_wifi_setting(wifi_setting_type_t setting, void *data)
 	(void) LPAppFreeHandle(handle, false);
 
 	if (lpErr)
-        {
+	{
 		g_message("Error in executing LPAppCopyValue for %s",SettingKey[setting]);
 		goto Exit;
 	}
-
 
 	switch(setting)
 	{
@@ -287,24 +284,24 @@ Exit:
 
 static void add_wifi_profile(jvalue_ref *profile_j, wifi_profile_t *profile)
 {
-        jobject_put(*profile_j, J_CSTR_TO_JVAL("ssid"), jstring_create(profile->ssid));
-        jobject_put(*profile_j, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
+	jobject_put(*profile_j, J_CSTR_TO_JVAL("ssid"), jstring_create(profile->ssid));
+	jobject_put(*profile_j, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
 }
 
 static gchar *add_wifi_profile_list(void)
 {
-        if(profile_list_is_empty() == TRUE)
-                return NULL;
+	if (profile_list_is_empty() == TRUE)
+	return NULL;
 
 	gchar *profile_list_str = NULL;
 	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-	if(response_schema)
+	if (response_schema)
 	{
 		jvalue_ref profilelist_j = jobject_create();
 		jvalue_ref profilelist_arr_j = jarray_create(NULL);
 
 		wifi_profile_t *profile = get_next_profile(NULL);
-		while(NULL != profile)
+		while (NULL != profile)
 		{
 			jvalue_ref profileinfo_j = jobject_create();
 			jvalue_ref profile_j = jobject_create();
@@ -316,11 +313,13 @@ static gchar *add_wifi_profile_list(void)
 			profile = get_next_profile(profile);
 			g_free(enc_profile_str);
 		}
+
 		jobject_put(profilelist_j, J_CSTR_TO_JVAL("profileList"), profilelist_arr_j);
 		profile_list_str = g_strdup(jvalue_tostring(profilelist_j, response_schema));
 		jschema_release(&response_schema);
 		j_release(&profilelist_j);
 	}
+
 	return profile_list_str;
 }
 
@@ -340,8 +339,8 @@ gboolean store_wifi_setting(wifi_setting_type_t setting, void *data)
 
 	lpErr = LPAppGetHandle(WIFI_LUNA_PREFS_ID, &handle);
 	g_message("Getting handle for %s ",WIFI_LUNA_PREFS_ID);
-        if (lpErr)
-        {
+	if (lpErr)
+	{
 		g_message("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
 		return FALSE;
 	}

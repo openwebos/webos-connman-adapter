@@ -55,7 +55,7 @@ wifi_profile_t *get_profile_by_id(guint profile_id)
 
 wifi_profile_t *get_profile_by_ssid(gchar *ssid)
 {
-	if(NULL == ssid)
+	if (NULL == ssid)
 		return NULL;
 
 	GSList *iter;
@@ -78,11 +78,11 @@ wifi_profile_t *get_profile_by_ssid(gchar *ssid)
  */
 void create_new_profile(gchar *ssid)
 {
-	if(NULL == ssid)
+	if (NULL == ssid)
 		return;
 
 	wifi_profile_t *new_profile = g_new0(wifi_profile_t, 1);
-	if(NULL == new_profile)
+	if (NULL == new_profile)
 	{
 		g_error("Out of memory!");
 		return;
@@ -92,7 +92,7 @@ void create_new_profile(gchar *ssid)
 
 	wifi_profile_list = g_slist_append(wifi_profile_list, (gpointer)new_profile);
 	/* Store wifi profiles */
-	g_message("*********** STORING WIFI PROFILE %s************",ssid);
+	g_message("*********** STORING WIFI PROFILE %s************", ssid);
 	store_wifi_setting(WIFI_PROFILELIST_SETTING, NULL);
 }
 
@@ -111,6 +111,7 @@ void delete_profile(wifi_profile_t *profile)
 	{
 		wifi_profile_list = g_slist_remove_link( wifi_profile_list, g_slist_find(wifi_profile_list, profile));
 	}
+
 	g_free(profile->ssid);
 	g_free(profile);
 	profile = NULL;
@@ -123,7 +124,7 @@ void delete_profile(wifi_profile_t *profile)
 
 gboolean profile_list_is_empty(void)
 {
-	return ( 0 == g_slist_length(wifi_profile_list));
+	return (0 == g_slist_length(wifi_profile_list));
 }
 
 /**
@@ -133,9 +134,9 @@ gboolean profile_list_is_empty(void)
 wifi_profile_t *get_next_profile(wifi_profile_t *curr_profile)
 {
 	// Return first profile (if present), if NULL argument is passed
-	if(NULL == curr_profile)
+	if (NULL == curr_profile)
 	{
-		if(NULL != wifi_profile_list)
+		if (NULL != wifi_profile_list)
 		{
 			return (wifi_profile_t *)(wifi_profile_list->data);
 		}
@@ -144,12 +145,12 @@ wifi_profile_t *get_next_profile(wifi_profile_t *curr_profile)
 	}
 
 	GSList *node = g_slist_find(wifi_profile_list, curr_profile);
-	if(node->next != NULL)
+	if (node->next != NULL)
 	{
 		wifi_profile_t *profile = (wifi_profile_t *)(node->next->data);
 		return profile;
 	}
-		
+
 	return NULL;
 }
 
@@ -164,10 +165,10 @@ void move_profile_to_head(wifi_profile_t *profile)
 		return;
 
 	GSList *node = g_slist_find(wifi_profile_list, profile);
-	if(NULL != node)
+	if (NULL != node)
 	{
 		/* If the given profile is already the head, return */
-		if(node == wifi_profile_list)
+		if (node == wifi_profile_list)
 			return;
 		/* Delete the link from the list */
 		wifi_profile_list = g_slist_remove_link( wifi_profile_list, g_slist_find(wifi_profile_list, profile));
