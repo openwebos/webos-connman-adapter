@@ -321,23 +321,6 @@ static bool connect_wifi_with_ssid(const char *ssid)
 	return false;
 }
 
-/* If no service is connected , try connecting to profiles until successful */
-
-static void connect_service_from_profile_list(void)
-{
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if(NULL == connected_service)
-	{
-		wifi_profile_t *profile = NULL;
-		while(NULL != (profile = get_next_profile(profile)))
-		{
-			if(connect_wifi_with_ssid(profile->ssid))
-				return;
-		}
-	}
-}
-
-
 /**
  *  @brief Callback function registered with connman manager whenever any of its properties change
  *
@@ -385,8 +368,6 @@ static void manager_property_changed_callback(gpointer data, const gchar *proper
 
 static void manager_services_changed_callback(gpointer data)
 {
-	connect_service_from_profile_list();
-
 	jvalue_ref reply = jobject_create();
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
@@ -482,9 +463,6 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 		case  CONNMAN_SERVICE_STATE_READY:
 		case  CONNMAN_SERVICE_STATE_ONLINE:
 			break;
-		case CONNMAN_SERVICE_STATE_IDLE:
-			connect_service_from_profile_list();
-			return;
 		// TODO handle the "failure" case, should we reconnect immediately from profile list,
 		// or wait for some time and then try reconnecting.
 		default:
