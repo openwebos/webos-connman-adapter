@@ -665,6 +665,58 @@ void connman_manager_register_services_changed_cb(connman_manager_t *manager, co
 
 
 /**
+ * @brief Register a agent instance on the specified dbus path with the manager
+ *
+ * @param DBus object path where the agents is available
+ * @return TRUE, if agent was successfully registered with the manager, FALSE otherwise.
+ **/
+
+gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar *path)
+{
+	GError *error = NULL;
+
+	if (NULL == manager)
+		return FALSE;
+
+	connman_interface_manager_call_register_agent_sync(manager->remote,
+		path, NULL, &error);
+	if (error) {
+		g_message("%s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+
+	g_message("Registered agent successfully with connman");
+
+	return TRUE;
+}
+
+/**
+ * @brief Unegister a agent instance on the specified dbus path from the manager
+ *
+ * @param DBus object path where the agents is available
+ * @return TRUE, if agent was successfully unregistered from the manager, FALSE otherwise.
+ **/
+
+gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gchar *path)
+{
+	GError *error;
+
+	if (NULL == manager)
+		return FALSE;
+
+	connman_interface_manager_call_unregister_agent_sync(manager->remote,
+		path, NULL, &error);
+	if (error) {
+		g_error("%s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/**
  * @brief  Initialize a new manager instance and update its services and technologies list
  *
  */
