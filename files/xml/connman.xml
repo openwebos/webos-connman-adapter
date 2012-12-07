@@ -96,5 +96,21 @@ limitations under the License.
 			<arg type="v"/>
 		</signal>
 	</interface>
-
+	<interface name="net.connman.Agent">
+		<method name="Release">
+		</method>
+		<method name="ReportError">
+			<arg type="o" direction="in"/>
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="RequestBrowser">
+			<arg type="o" direction="in"/>
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="RequestInput">
+			<arg type="o" direction="in"/>
+			<arg type="a{sv}" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
+		</method>
+	</interface>
 </node>

@@ -1,6 +1,7 @@
 /* @@@LICENSE
 *
 *      Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+*      Copyright (c) 2012 Simon Busch <morphis@gravedo.de>
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -40,16 +41,39 @@
 #include "wifi_profile.h"
 #include "wifi_setting.h"
 #include "connman_manager.h"
+#include "connman_agent.h"
 #include "lunaservice_utils.h"
 #include "common.h"
 #include "connectionmanager_service.h"
 
+typedef struct connection_settings {
+	char *passkey;
+} connection_settings_t;
+
 static LSHandle *pLsHandle, *pLsPublicHandle;
 
 connman_manager_t *manager = NULL;
+static connman_agent_t *agent = NULL;
 
 /* Constant for mapping access point signal strength to signal levels ( 1 to 5) */
 #define MAX_SIGNAL_BARS         5
+
+static connection_settings_t* connection_settings_new(void)
+{
+	connection_settings_t *settings = NULL;
+
+	settings = g_new0(connection_settings_t, 1);
+
+	return settings;
+}
+
+static void connection_settings_free(connection_settings_t *settings)
+{
+	if (settings->passkey)
+		g_free(settings->passkey);
+
+	g_free(settings);
+}
 
 /**
  *  @brief Returns true if wifi technology is powered on
@@ -262,18 +286,74 @@ static bool populate_wifi_networks(jvalue_ref *reply)
 
 static void service_state_changed_callback(gpointer data, const gchar *new_state);
 
+static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
+{
+	connection_settings_t *settings = data;
+	GVariant *response = NULL;
+	GVariantBuilder *vabuilder;
+	GVariantIter iter;
+	gchar *key;
+	GVariant *value;
+	if (!g_variant_is_container(fields)) {
+		connection_settings_free(settings);
+		return NULL;
+	}
+
+	vabuilder = g_variant_builder_new("a{sv}");
+
+	g_variant_iter_init(&iter, fields);
+	while (g_variant_iter_next(&iter, "{sv}", &key, &value)) {
+		if (!strncmp(key, "Passphrase", 10)) {
+			/* FIXME we're ignoring the other fields here as we're only connecting to
+			 * psk secured networks at the moment */
+			g_variant_builder_add(vabuilder, "{sv}", "Passphrase",
+				g_variant_new("s", settings->passkey));
+		}
+	}
+
+	response = g_variant_builder_end(vabuilder);
+	g_variant_builder_unref(vabuilder);
+
+	connection_settings_free(settings);
+
+	return response;
+}
+
+static void service_connect_callback(gboolean success, gpointer user_data)
+{
+	luna_service_request_t *service_req = user_data;
+
+	if (success) {
+		LSMessageReplySuccess(service_req->handle, service_req->message);
+	}
+	else {
+		LSMessageReplyCustomError(service_req->handle, service_req->message, "Failed to connect.");
+	}
+
+	LSMessageUnref(service_req->message);
+	g_free(service_req);
+	connman_agent_set_request_input_callback(agent, NULL, NULL);
+}
+
 /**
  *  @brief Connect to a access point with the given ssid
  *
  *  @param ssid 
  */
 
-static bool connect_wifi_with_ssid(const char *ssid)
+static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna_service_request_t *service_req)
 {
-	if(NULL == ssid)
-		return false;
+	jvalue_ref security_obj = NULL;
+	jvalue_ref simple_security_obj = NULL;
+	jvalue_ref enterprise_security_obj = NULL;
+	jvalue_ref passkey_obj = NULL;
+	raw_buffer passkey_buf;
+	GSList *ap;
+	gboolean found_service = FALSE;
+	connection_settings_t *settings = NULL;
 
- 	GSList *ap;
+	if (NULL == ssid)
+		return false;
 
 	/* Look up for the service with the given ssid */
         for (ap = manager->wifi_services; NULL != ap ; ap = ap->next)
@@ -282,29 +362,70 @@ static bool connect_wifi_with_ssid(const char *ssid)
 		if((NULL != service->name) && g_str_equal(service->name, ssid))
 		{               
 			g_message("Connecting to ssid %s",service->name);
+			found_service = TRUE;
 			/* Register for 'state changed' signal for this service to update its connection status */
 			connman_service_register_state_changed_cb(service, (connman_state_changed_cb)service_state_changed_callback);
+
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
 			if(connected_service != NULL)
 			{
-				if(connected_service != service)
+				if(connected_service != service) {
 					connman_service_disconnect(connected_service);
-				else	/* Already connected */
-					return true;
+				}
+				else {
+					/* Already connected so connection was successfull */
+					LSMessageReplySuccess(service_req->handle, service_req->message);
+					g_message("Already connected with network");
+					goto cleanup;
+				}
 			}
-			
-			if(connman_service_connect(service))
+
+			if (jobject_get_exists(req_object, J_CSTR_TO_BUF("security"), &security_obj))
 			{
-				return true;
-			}					
-			else
+				settings = connection_settings_new();
+
+				/* parse security parameters and set connection settings accordingly */
+				if (jobject_get_exists(security_obj, J_CSTR_TO_BUF("simpleSecurity"), &simple_security_obj) &&
+					jobject_get_exists(simple_security_obj, J_CSTR_TO_BUF("passKey"), &passkey_obj))
+				{
+					passkey_buf = jstring_get(passkey_obj);
+
+					settings->passkey = strdup(passkey_buf.m_str);
+				}
+				else if (jobject_get_exists(security_obj, J_CSTR_TO_BUF("enterpriseSecurity"), &enterprise_security_obj))
+				{
+					LSMessageReplyCustomError(service_req->handle, service_req->message, "Not implemented.");
+					goto cleanup;
+				}
+				else
+				{
+					LSMessageReplyErrorInvalidParams(service_req->handle, service_req->message);
+					goto cleanup;
+				}
+
+				g_message("Setup for connecting with secured network");
+				connman_agent_set_request_input_callback(agent, agent_request_input_callback, settings);
+			}
+
+			if (!connman_service_connect(service, service_connect_callback, service_req))
 			{
-				g_message("Error in connecting");
-				return false;
-			}		
+				LSMessageReplyErrorUnknown(service_req->handle, service_req->message);
+				goto cleanup;
+			}
 		}
-        }
-	return false;
+	}
+
+	if (!found_service) {
+		LSMessageReplyCustomError(service_req->handle, service_req->message, "Network not found.");
+		goto cleanup;
+	}
+	return;
+cleanup:
+	if (settings != NULL)
+		connection_settings_free(settings);
+
+	g_free(service_req);
+	LSMessageUnref(service_req->message);
 }
 
 /**
@@ -469,6 +590,8 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 		create_new_profile(service->name);
 	}
 
+	/* Unset agent callback as we no longer have any valid input for connman available */
+	connman_agent_set_request_input_callback(agent, NULL, NULL);
 }
 
 
@@ -562,7 +685,12 @@ cleanup:
  *  Connect to a wifi access point with its ssid or its profile Id 
  *  
  *  JSON format:
- *  luna://com.palm.wifi/connect '{"ssid":"<Name of the access point>"}'
+ *  luna://com.palm.wifi/connect '{"ssid":"<Name of the access point>",
+ *                                 "security": { "securityType": "",
+ *                                     "simpleSecurity": { "passKey": "<passphrase for the network>" },
+ *                                     "enterpriseSecurity": { ... }
+ *                                 }
+ *                                }'
  *  luna://com.palm.wifi/connect '{"profileId":<Profile ID>}'`
  * 
  *  @param sh
@@ -573,6 +701,8 @@ cleanup:
 
 static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* context)
 {
+	luna_service_request_t *service_req;
+
 	if(!connman_status_check(manager, sh, message))
 		return true;
 
@@ -628,10 +758,10 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 		ssid = g_strdup(profile->ssid);
 	}
 
-	if(connect_wifi_with_ssid(ssid))
-		LSMessageReplySuccess(sh, message);
-	else
-		LSMessageReplyErrorUnknown(sh, message);
+	service_req = luna_service_request_new(sh, message);
+	LSMessageRef(message);
+
+	connect_wifi_with_ssid(ssid, parsedObj, service_req);
 
 	g_free(ssid);
 cleanup:
@@ -1111,6 +1241,16 @@ cleanup:
 	return true;
 }
 
+static void agent_registered_callback(gpointer user_data)
+{
+	gchar *agent_path;
+
+	agent_path = connman_agent_get_path(agent);
+	if (!connman_manager_register_agent(manager, agent_path)) {
+		g_message("Could not register our agent instance with connman; functionality will be limited!");
+	}
+}
+
 /**
  * com.palm.wifi service Luna Method Table
  */
@@ -1138,6 +1278,7 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 	LSErrorInit (&lserror);
 	pLsHandle       = NULL;
 	pLsPublicHandle = NULL;
+	gchar *agent_path = NULL;
 
 	if(NULL == mainloop)
 		goto Exit;
@@ -1182,6 +1323,12 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 	{
 		goto Exit;
 	}       
+
+	agent = connman_agent_new();
+	if (agent == NULL)
+		goto Exit;
+
+	connman_agent_set_registered_callback(agent, agent_registered_callback, NULL);
 
 	/* Register for manager's "PropertyChanged" and "ServicesChanged" signals for sending 'getstatus' and 'findnetworks'
 	   methods to their subscribers */
