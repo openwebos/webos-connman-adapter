@@ -26,6 +26,17 @@
 
 #include "lunaservice_utils.h"
 
+luna_service_request_t* luna_service_request_new(LSHandle *handle, LSMessage *message)
+{
+	luna_service_request_t *req = NULL;
+
+	req = g_new0(luna_service_request_t, 1);
+	req->handle = handle;
+	req->message = message;
+
+	return req;
+}
+
 void
 LSMessageReplyErrorUnknown(LSHandle *sh, LSMessage *message)
 {
