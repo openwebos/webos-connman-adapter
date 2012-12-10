@@ -369,11 +369,16 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
 			if(connected_service != NULL)
 			{
-				if(connected_service != service) {
+				if(connman_service_type_ethernet(connected_service))
+				{
+					LSMessageReplyCustomError(service_req->handle, service_req->message, "Connected to wired network");
+					goto cleanup;
+				}
+				else if (connected_service != service) {
 					connman_service_disconnect(connected_service);
 				}
 				else {
-					/* Already connected so connection was successfull */
+					/* Already connected so connection was successful */
 					LSMessageReplySuccess(service_req->handle, service_req->message);
 					g_message("Already connected with network");
 					goto cleanup;
