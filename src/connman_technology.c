@@ -144,6 +144,7 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 	{
 		g_error("%s", error->message);
 		g_error_free(error);
+		g_free(technology);
 		return NULL;
 	}
 

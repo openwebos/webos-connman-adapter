@@ -477,6 +477,7 @@ connman_service_t *connman_service_new(GVariant *variant)
 	{
 		g_error("%s", error->message);
 		g_error_free(error);
+		g_free(service);
 		return NULL;
 	}
 
