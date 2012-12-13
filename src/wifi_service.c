@@ -792,18 +792,6 @@ cleanup:
 static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	jvalue_ref reply = jobject_create();
-	if(!connman_status_check(manager, sh, message))
-		goto cleanup;
-
-	if(!wifi_technology_status_check(sh, message))
-		goto cleanup;
-
-	if(!is_wifi_powered())
-	{
-		LSMessageReplyCustomError(sh,message,"WiFi switched off");
-		goto cleanup;
-	}
-
 	bool subscribed = false;
 	LSError lserror;
 	LSErrorInit(&lserror);
@@ -816,6 +804,18 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 			LSErrorFree(&lserror);
 		}
 		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
+	}
+
+	if(!connman_status_check(manager, sh, message))
+		goto cleanup;
+
+	if(!wifi_technology_status_check(sh, message))
+		goto cleanup;
+
+	if(!is_wifi_powered())
+	{
+		LSMessageReplyCustomError(sh,message,"WiFi switched off");
+		goto cleanup;
 	}
 
 	connman_technology_t *wifi_tech = connman_manager_find_wifi_technology(manager);
@@ -881,12 +881,6 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 	LSErrorInit(&lserror);
 	bool subscribed = false;
 
-	if(!connman_status_check(manager, sh, message))
-		return true;
-
-	if(!wifi_technology_status_check(sh, message))
-		return true;
-
 	if (LSMessageIsSubscription(message))
 	{
 		if (!LSSubscriptionProcess(sh, message, &subscribed, &lserror))
@@ -896,6 +890,12 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 		}
 		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
 	}
+
+	if(!connman_status_check(manager, sh, message))
+		goto cleanup;
+
+	if(!wifi_technology_status_check(sh, message))
+		goto cleanup;
 
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
