@@ -16,8 +16,9 @@
 #
 # LICENSE@@@
 
-
 # -*- mode: conf; -*-
+
+start on ls-hubd_public-ready
 
 respawn
 exec @WEBOS_INSTALL_SBINDIR@/webos-connman-adapter
