@@ -166,13 +166,18 @@ static gboolean service_on_configured_iface(GVariant	*service_v)
 	return FALSE;
 }
 
+gint compare_signal_strength(connman_service_t *service1, connman_service_t *service2)
+{
+	return (service2->strength - service1->strength);
+}
+
 static add_service_to_list(connman_manager_t *manager, connman_service_t *service)
 {
-	if(connman_service_type_wifi(service) == TRUE)
+	if(connman_service_type_wifi(service))
 	{
-		manager->wifi_services = g_slist_append(manager->wifi_services, service);
+		manager->wifi_services = g_slist_insert_sorted(manager->wifi_services, service, compare_signal_strength);
 	}
-	else if(connman_service_type_ethernet(service) == TRUE)
+	else if(connman_service_type_ethernet(service))
 	{
 		manager->wired_services = g_slist_append(manager->wired_services, service);
 	}
