@@ -1201,6 +1201,12 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 	LSErrorInit(&lserror);
 	char mac_address[32]={0};
 
+	if(!connman_status_check(manager, sh, message))
+		return true;
+
+	if(!wifi_technology_status_check(sh, message))
+		return true;
+
 	if(get_wifi_mac_address(mac_address) < 0)
 	{
 		LSMessageReplyErrorUnknown(sh,message);
