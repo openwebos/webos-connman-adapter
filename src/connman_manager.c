@@ -166,8 +166,18 @@ static gboolean service_on_configured_iface(GVariant	*service_v)
 	return FALSE;
 }
 
-gint compare_signal_strength(connman_service_t *service1, connman_service_t *service2)
+/**
+ * @brief Compare the signal strengths of services and sort the list based on decreasing
+ * signal strength. However the hidden service (if any) will always be put at the end of the list.
+ */ 
+
+static gint compare_signal_strength(connman_service_t *service1, connman_service_t *service2)
 {
+	if(service2->name == NULL) 
+		return -1;	// let the hidden service be added to the list
+				// after all non-hidden services
+	else if(service1->name == NULL)
+		return 1;	// insert non-hidden service2 before hidden service1
 	return (service2->strength - service1->strength);
 }
 
@@ -215,16 +225,8 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 			else
 			{
 				service = connman_service_new(service_v);
-				if(NULL == service->name)
-				{
-					/* Not adding hidden services for now*/
-					connman_service_free(service, NULL);
-				}
-				else
-				{
-					g_message("Adding service %s",service->name);
-					add_service_to_list(manager, service);
-				}
+				g_message("Adding service %s",service->name);
+				add_service_to_list(manager, service);
 			}
 			ret = TRUE;
 		}
@@ -368,16 +370,8 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 			if(service_on_configured_iface(service_v))
 			{
 				service = connman_service_new(service_v);
-				if(NULL == service->name)
-				{
-					/* Not adding hidden services for now*/
-					connman_service_free(service, NULL);
-				}
-				else
-				{
-					g_message("Adding service %s",service->name);
-					add_service_to_list(manager, service);
-				}
+				g_message("Adding service %s",service->name);
+				add_service_to_list(manager, service);
 			}
 		}
 	}
