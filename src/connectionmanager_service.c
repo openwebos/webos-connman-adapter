@@ -51,7 +51,7 @@ static void update_wifi_status(jvalue_ref *wifi_status)
 
 	/* Get the service which is connecting or already in connected state */
 	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if((connected_service != NULL) && (connman_service_type_wifi(connected_service) == TRUE))
+	if((connected_service != NULL) && connman_service_type_wifi(connected_service))
 	{
 		int connman_state = 0;
 
@@ -94,7 +94,7 @@ static void update_wired_status(jvalue_ref *wired_status)
 
 	/* Get the service which is connecting or already in connected state */
 	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if((connected_service != NULL) && (connman_service_type_ethernet(connected_service) == TRUE))
+	if((connected_service != NULL) && connman_service_type_ethernet(connected_service))
 	{
 		int connman_state = 0;
 
@@ -337,7 +337,7 @@ static bool handle_set_ipv4_command(LSHandle *sh, LSMessage *message, void* cont
 	connman_service_t *service = get_connman_service(ssid);
 	if(NULL != service)
 	{
-		if(connman_service_set_ipv4(service, &ipv4) == TRUE)
+		if(connman_service_set_ipv4(service, &ipv4))
 			LSMessageReplySuccess(sh, message);
 		else
 			LSMessageReplyErrorUnknown(sh, message);
@@ -416,7 +416,7 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 	connman_service_t *service = get_connman_service(ssid);
 	if(NULL != service)
 	{
-		if(connman_service_set_nameservers(service, dns) == TRUE)
+		if(connman_service_set_nameservers(service, dns))
 			LSMessageReplySuccess(sh, message);
 		else
 			LSMessageReplyErrorUnknown(sh, message);

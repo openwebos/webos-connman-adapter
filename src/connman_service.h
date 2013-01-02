@@ -56,6 +56,7 @@ typedef struct connman_service
   	gboolean auto_connect;
   	gboolean immutable;
   	gboolean favorite;
+	gboolean hidden;
   	gint type;
 	ipinfo_t ipinfo;
 	gulong sighandler_id;

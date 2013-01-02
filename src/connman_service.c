@@ -420,7 +420,12 @@ void connman_service_update_properties(connman_service_t *service, GVariant *ser
 		}
 
 		if (g_str_equal(key, "State"))
+		{
 			service->state =  g_variant_dup_string(val, NULL);
+			// Only a hidden service gets added as a new service with "association" state
+			if(g_str_equal(service->state, "association"))
+				service->hidden = TRUE;
+		}
 
 		if (g_str_equal(key, "Strength"))
 			service->strength = g_variant_get_byte(val);
@@ -436,7 +441,6 @@ void connman_service_update_properties(connman_service_t *service, GVariant *ser
 
 		if (g_str_equal(key, "Favorite"))
 			service->favorite = g_variant_get_boolean(val);
-
 	}
 }
 

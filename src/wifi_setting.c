@@ -162,7 +162,7 @@ Exit:
 static gboolean populate_wifi_profile(jvalue_ref profileObj)
 {
 	gboolean ret = FALSE;
-	jvalue_ref wifiProfileObj, ssidObj;
+	jvalue_ref wifiProfileObj, ssidObj, securityListObj, hiddenObj;
 
 	if(jobject_get_exists(profileObj, J_CSTR_TO_BUF("wifiProfile"), &wifiProfileObj))
 	{
@@ -185,17 +185,41 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 			goto Exit;
 		}
 
+		gchar *ssid = NULL;
+		GStrv security = NULL;
+		gboolean hidden = FALSE;
 		if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("ssid"), &ssidObj))
 		{
 			raw_buffer ssid_buf = jstring_get(ssidObj);
-			gchar *ssid = g_strdup(ssid_buf.m_str);
-			if(NULL == get_profile_by_ssid(ssid))
-				create_new_profile(ssid);
-			g_free(ssid);
+			ssid = g_strdup(ssid_buf.m_str);
 			ret = TRUE;
 		}
 		else
 			g_message("ssid object not found");
+
+		if(NULL == get_profile_by_ssid(ssid))
+		{
+			if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("security"), &securityListObj))
+			{
+				ssize_t i, num_elems = jarray_size(securityListObj);
+				security = g_new0(GStrv, 1);
+				for(i = 0; i < num_elems; i++)
+				{
+					jvalue_ref securityObj = jarray_get(securityListObj, i);
+					raw_buffer security_buf = jstring_get(securityObj);
+					security[i] = g_strdup(security_buf.m_str);
+				}
+			}
+			if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("wasCreatedWithJoinOther"), &hiddenObj))
+			{
+				jboolean_get(hiddenObj, &hidden);
+			}
+
+			create_new_profile(ssid, security, hidden);
+			g_strfreev(security);
+		}
+
+		g_free(ssid);
 Exit:
 		j_release(&parsedObj);
 		g_free(dec_profile);
@@ -289,11 +313,24 @@ static void add_wifi_profile(jvalue_ref *profile_j, wifi_profile_t *profile)
 {
         jobject_put(*profile_j, J_CSTR_TO_JVAL("ssid"), jstring_create(profile->ssid));
         jobject_put(*profile_j, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
+	if(profile->hidden)
+		jobject_put(*profile_j, J_CSTR_TO_JVAL("wasCreatedWithJoinOther"), jboolean_create(profile->hidden));
+
+	if(profile->security != NULL)
+	{
+		jvalue_ref security_list = jarray_create(NULL);
+		gsize i;
+		for (i = 0; i < g_strv_length(profile->security); i++)
+		{
+			jarray_append(security_list, jstring_create(profile->security[i]));
+		}
+		jobject_put(*profile_j, J_CSTR_TO_JVAL("security"), security_list);
+	}
 }
 
 static gchar *add_wifi_profile_list(void)
 {
-        if(profile_list_is_empty() == TRUE)
+        if(profile_list_is_empty())
                 return NULL;
 
 	gchar *profile_list_str = NULL;
@@ -357,7 +394,6 @@ gboolean store_wifi_setting(wifi_setting_type_t setting, void *data)
 					goto Exit;
 				}
 				lpErr = LPAppSetValue(handle, SettingKey[setting], profile_list_str);
-				g_message("Setting value : %s",profile_list_str);
 				g_free(profile_list_str);
 				if (lpErr)
 				{

@@ -76,7 +76,7 @@ wifi_profile_t *get_profile_by_ssid(gchar *ssid)
  * For open networks we only need to add its ssid and generate a profile ID
  * However more fields to be added when supporting secured wifi networks.
  */
-void create_new_profile(gchar *ssid)
+void create_new_profile(gchar *ssid, GStrv security, gboolean hidden)
 {
 	if(NULL == ssid)
 		return;
@@ -89,6 +89,16 @@ void create_new_profile(gchar *ssid)
 	}
 	new_profile->profile_id = gprofile_id++;
 	new_profile->ssid = g_strdup(ssid);
+	new_profile->hidden = hidden;
+	if(NULL != security)
+	{
+		gsize i;
+		new_profile->security = g_new0(GStrv, 1);
+		for (i = 0; i < g_strv_length(security); i++)
+		{
+			new_profile->security[i] = g_strdup(security[i]);
+		}
+	}
 
 	wifi_profile_list = g_slist_append(wifi_profile_list, (gpointer)new_profile);
 	/* Store wifi profiles */
@@ -111,6 +121,7 @@ void delete_profile(wifi_profile_t *profile)
 		wifi_profile_list = g_slist_remove_link( wifi_profile_list, g_slist_find(wifi_profile_list, profile));
 	}
 	g_free(profile->ssid);
+	g_strfreev(profile->security);
 	g_free(profile);
 	profile = NULL;
 	store_wifi_setting(WIFI_PROFILELIST_SETTING, NULL);

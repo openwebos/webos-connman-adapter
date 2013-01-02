@@ -238,7 +238,11 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 	else
 	{
 		/* Else, create a new profile */
-		create_new_profile(service->name);
+		gchar *security = NULL;
+		if(NULL != service->security && !g_str_equal(service->security[0], "none"))
+			create_new_profile(service->name, service->security, service->hidden);
+		else
+			create_new_profile(service->name, NULL, service->hidden);
 	}
 
 	/* Unset agent callback as we no longer have any valid input for connman available */
@@ -282,7 +286,7 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 			jobject_put(*network, J_CSTR_TO_JVAL("connectState"),jstring_create(connman_service_get_webos_state(connman_service_get_state(service->state)))); 
 			/* Register for 'state changed' signal for this service to update its connection status */
 			/* The hidden services, once connected, get added as a new service in "association" state */
-			connman_service_register_state_changed_cb(service, (connman_state_changed_cb)service_state_changed_callback);
+			connman_service_register_state_changed_cb(service, service_state_changed_callback);
 		}
 	}
 }
@@ -440,7 +444,7 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 
 			found_service = TRUE;
 			/* Register for 'state changed' signal for this service to update its connection status */
-			connman_service_register_state_changed_cb(service, (connman_state_changed_cb)service_state_changed_callback);
+			connman_service_register_state_changed_cb(service, service_state_changed_callback);
 
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
 			if(connected_service != NULL)
@@ -962,6 +966,22 @@ static void add_wifi_profile(jvalue_ref *profile_j, wifi_profile_t *profile)
 	jvalue_ref profile_details_j = jobject_create();
 	jobject_put(profile_details_j, J_CSTR_TO_JVAL("ssid"), jstring_create(profile->ssid));
 	jobject_put(profile_details_j, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
+	if(profile->hidden)
+	{
+		jobject_put(profile_details_j, J_CSTR_TO_JVAL("wasCreatedWithJoinOther"), jboolean_create(profile->hidden));
+	}
+	if(profile->security != NULL)
+	{
+		jvalue_ref security = jobject_create();
+		jvalue_ref security_list = jarray_create(NULL);
+		int i;
+		for (i = 0; i < g_strv_length(profile->security); i++)
+		{
+			jarray_append(security_list, jstring_create(profile->security[i]));
+		}
+		jobject_put(security, J_CSTR_TO_JVAL("securityType"), security_list);
+		jobject_put(profile_details_j, J_CSTR_TO_JVAL("security"), security);
+	}
 	jobject_put(*profile_j, J_CSTR_TO_JVAL("wifiProfile"), profile_details_j);
 }
 
@@ -1374,14 +1394,14 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 
 	/* Register for manager's "PropertyChanged" and "ServicesChanged" signals for sending 'getstatus' and 'findnetworks'
 	   methods to their subscribers */
-	connman_manager_register_property_changed_cb(manager, (connman_property_changed_cb)manager_property_changed_callback);
-	connman_manager_register_services_changed_cb(manager, (connman_services_changed_cb)manager_services_changed_callback);
+	connman_manager_register_property_changed_cb(manager, manager_property_changed_callback);
+	connman_manager_register_services_changed_cb(manager, manager_services_changed_callback);
 
 	/* Register for WiFi technology's "PropertyChanged" signal*/
 	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
 	if(technology)
 	{
-		connman_technology_register_property_changed_cb(technology, (connman_property_changed_cb)technology_property_changed_callback);
+		connman_technology_register_property_changed_cb(technology, technology_property_changed_callback);
 	}
 
 	init_wifi_profile_list();

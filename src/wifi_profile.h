@@ -25,23 +25,23 @@
 #ifndef _WIFI_PROFILE_H_
 #define _WIFI_PROFILE_H_
 
+#include <glib-object.h>
+
 typedef struct wifi_profile
 {
-	// Lot more fields to be added when we connect to secure networks
-	// For open networks these 2 fields are sufficient
 	guint profile_id;
 	gchar *ssid;
+	gboolean hidden;
+	GStrv security;
 }wifi_profile_t;
-
 
 extern void init_wifi_profile_list(void);
 extern wifi_profile_t * get_profile_by_id(guint profile_id);
 extern wifi_profile_t * get_profile_by_ssid(gchar *ssid);
-extern void create_new_profile(gchar *ssid);
+extern void create_new_profile(gchar *ssid, GStrv security, gboolean hidden);
 extern void delete_profile(wifi_profile_t *profile);
 extern gboolean profile_list_is_empty(void);
 extern wifi_profile_t *get_next_profile(wifi_profile_t *curr_profile);
 extern void move_profile_to_head(wifi_profile_t *new_head);
-
 
 #endif /* _WIFI_PROFILE_H_ */
