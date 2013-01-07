@@ -509,6 +509,32 @@ connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *m
 	return NULL;
 }
 
+/**
+ * @brief  Go through the manager's technologies list and get the ethernet one
+ *
+ * @param  manager
+ *
+ */
+
+connman_technology_t *connman_manager_find_ethernet_technology (connman_manager_t *manager)
+{
+	if(NULL == manager)
+		return NULL;
+
+	GSList *iter;
+
+	for (iter = manager->technologies; NULL != iter; iter = iter->next)
+	{
+		connman_technology_t *tech = (struct connman_technology *)(iter->data);
+
+		if (g_str_equal("ethernet", tech->type))
+		{
+			return tech;
+		}
+	}
+
+	return NULL;
+}
 
 /**
  * @brief  Go through the manager's services list and get the one which is in "association",

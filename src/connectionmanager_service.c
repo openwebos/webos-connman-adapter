@@ -433,13 +433,165 @@ Exit:
 
 
 /**
+ *  @brief Returns true if wifi technology is powered on
+ *
+ */
+
+static gboolean is_wifi_powered(void)
+{
+	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
+	if(NULL != technology)
+		return technology->powered;
+	else
+		return FALSE;
+}
+
+/**
+ *  @brief Sets the wifi technologies powered state
+ *
+ *  @param state
+ */
+
+static gboolean set_wifi_state(bool state)
+{
+	return connman_technology_set_powered(connman_manager_find_wifi_technology(manager),state);
+}
+
+/**
+ *  @brief Returns true if ethernet technology is powered on
+ *
+ */
+
+static gboolean is_ethernet_powered(void)
+{
+	connman_technology_t *technology = connman_manager_find_ethernet_technology(manager);
+	if(NULL != technology)
+		return technology->powered;
+	else
+		return FALSE;
+}
+
+/**
+ *  @brief Sets the ethernet technologies powered state
+ *
+ *  @param state
+ */
+
+static gboolean set_ethernet_state(bool state)
+{
+	return connman_technology_set_powered(connman_manager_find_ethernet_technology(manager),state);
+}
+
+/**
+ *  @brief Handler for "setstate" command.
+ *  Enable/disable the wifi service
+ *
+ *  JSON format:
+ *  luna://com.palm.wifi/setstate {"wifi":"<enabled/disabled>","wired":"<enabled/disabled>"}
+ *
+ */
+
+static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* context)
+{
+	if(!connman_status_check(manager, sh, message))
+		return true;
+
+	jvalue_ref parsedObj = {0};
+	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!input_schema)
+		return false;
+
+	JSchemaInfo schemaInfo;
+	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+	parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+	jschema_release(&input_schema);
+
+	if (jis_null(parsedObj))
+	{
+		LSMessageReplyErrorBadJSON(sh, message);
+		goto cleanup;
+	}
+
+	jvalue_ref wifiObj = {0};
+	gboolean enable_wifi = FALSE;
+	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("wifi"), &wifiObj))
+	{
+		if (jstring_equal2(wifiObj, J_CSTR_TO_BUF("enabled")))
+		{
+			enable_wifi = TRUE;
+		}
+		else if (jstring_equal2(wifiObj, J_CSTR_TO_BUF("disabled")))
+		{
+			enable_wifi = FALSE;
+		}
+		else
+		{
+			LSMessageReplyErrorBadJSON(sh, message);
+			goto cleanup;
+		}
+		/*
+		 *  Check if we are enabling an already enabled service,
+		 *  or disabling an already disabled service
+		 */
+
+		if((enable_wifi && is_wifi_powered()) || (!enable_wifi && !is_wifi_powered()))
+		{
+			g_message("Wifi technology already enabled/disabled");
+		}
+		else
+		{
+			set_wifi_state(enable_wifi);
+		}
+	}
+
+	jvalue_ref wiredObj = {0};
+	gboolean enable_wired = FALSE;
+	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("wired"), &wiredObj))
+	{
+		if (jstring_equal2(wiredObj, J_CSTR_TO_BUF("enabled")))
+		{
+			enable_wired = TRUE;
+		}
+		else if (jstring_equal2(wiredObj, J_CSTR_TO_BUF("disabled")))
+		{
+			enable_wired = FALSE;
+		}
+		else
+		{
+			LSMessageReplyErrorBadJSON(sh, message);
+			goto cleanup;
+		}
+		/*
+		 *  Check if we are enabling an already enabled service,
+		 *  or disabling an already disabled service
+		 */
+		if((enable_wired && is_ethernet_powered()) || (!enable_wired && !is_ethernet_powered()))
+		{
+			g_message("Wired technology already enabled/disabled");
+		}
+		else
+		{
+			set_ethernet_state(enable_wired);
+		}
+	}
+
+	LSMessageReplySuccess(sh,message);
+
+cleanup:
+	j_release(&parsedObj);
+	return true;
+
+}
+
+/**
  * com.palm.connectionmanager service Luna Method Table
  */
 
 static LSMethod connectionmanager_methods[] = {
-    { LUNA_METHOD_GETSTATUS,		handle_get_status_command },
-    { LUNA_METHOD_SETIPV4,		handle_set_ipv4_command },
-    { LUNA_METHOD_SETDNS,		handle_set_dns_command },
+    { LUNA_METHOD_GETSTATUS,            handle_get_status_command },
+    { LUNA_METHOD_SETIPV4,              handle_set_ipv4_command },
+    { LUNA_METHOD_SETDNS,               handle_set_dns_command },
+    { LUNA_METHOD_SETSTATE,             handle_set_state_command },
     { },
 };
 

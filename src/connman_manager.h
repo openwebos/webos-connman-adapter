@@ -46,6 +46,7 @@ typedef struct connman_manager
 extern gboolean connman_manager_is_manager_available (connman_manager_t *manager);
 extern gboolean connman_manager_is_manager_online (connman_manager_t *manager);
 extern connman_technology_t *connman_manager_find_wifi_technology(connman_manager_t *manager);
+extern connman_technology_t *connman_manager_find_ethernet_technology(connman_manager_t *manager);
 extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
 extern void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func);
 extern void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func);
