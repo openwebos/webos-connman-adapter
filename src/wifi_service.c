@@ -1143,6 +1143,7 @@ cleanup:
 
 /**
  * Handler for "deleteprofile" command.
+ * This command should delete the profile as well as disconnect the service matching this profile
  *
  * JSON format:
  * luna://com.palm.wifi/deleteprofile {"profileId":888}
@@ -1197,6 +1198,30 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 	}
 	else
 	{
+		GSList *ap = NULL;
+		/* Look up for any existing service with ssid same as this profile*/
+		for (ap = manager->wifi_services; ap; ap = ap->next)
+		{
+			connman_service_t *service = (connman_service_t *)(ap->data);
+			if(!g_strcmp0(service->name, profile->ssid) && NULL != service->state)
+			{
+				int service_state = connman_service_get_state(service->state);
+
+				switch(service_state)
+				{
+					case  CONNMAN_SERVICE_STATE_ASSOCIATION:
+					case  CONNMAN_SERVICE_STATE_CONFIGURATION:
+					case  CONNMAN_SERVICE_STATE_READY:
+					case  CONNMAN_SERVICE_STATE_ONLINE:
+						/* Disconnect the service */
+						connman_service_disconnect(service);
+						break;
+					default:
+						continue;
+				}
+
+			}
+		}
 		delete_profile(profile);
 		LSMessageReplySuccess(sh, message);
 	}
