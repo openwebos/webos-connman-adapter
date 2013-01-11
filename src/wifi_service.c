@@ -140,6 +140,12 @@ static void add_connected_network_status(jvalue_ref *reply, connman_service_t *c
 	if(connected_service->name != NULL)
 		jobject_put(network_info, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
 
+	wifi_profile_t *profile = get_profile_by_ssid(connected_service->name);
+	if(NULL != profile)
+	{
+		jobject_put(network_info, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
+	}
+
 	if(connected_service->state != NULL)
 	{
 		connman_state = connman_service_get_state(connected_service->state);
@@ -261,7 +267,15 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 	if(NULL == service || NULL == network)
 		return;
 
+	gboolean supported = TRUE;
+
 	jobject_put(*network, J_CSTR_TO_JVAL("ssid"), jstring_create(service->name));
+
+	wifi_profile_t *profile = get_profile_by_ssid(service->name);
+	if(NULL != profile)
+	{
+		jobject_put(*network, J_CSTR_TO_JVAL("profileId"), jnumber_create_i32(profile->profile_id));
+	}
 
 	if((service->security != NULL) && g_strv_length(service->security))
 	{
@@ -269,6 +283,9 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 		jvalue_ref security_list = jarray_create(NULL);
 		for (i = 0; i < g_strv_length(service->security); i++)
 		{
+			// We do not support enterprise security i.e "ieee8021x" security type
+			if(!g_strcmp0(service->security[i],"ieee8021x"))
+				supported = FALSE;
 			jarray_append(security_list, jstring_create(service->security[i]));
 		}
 		jobject_put(*network, J_CSTR_TO_JVAL("availableSecurityTypes"),security_list);
@@ -278,6 +295,7 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 
 	jobject_put(*network, J_CSTR_TO_JVAL("signalBars"),jnumber_create_i32(signalbars));
 	jobject_put(*network, J_CSTR_TO_JVAL("signalLevel"),jnumber_create_i32(service->strength));
+	jobject_put(*network, J_CSTR_TO_JVAL("supported"),jboolean_create(supported));
 
 	if(service->state != NULL) 
 	{
