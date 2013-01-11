@@ -260,10 +260,6 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 	if(NULL == service)
 		return FALSE;
 
-	// If iface is not NULL, it means the service properties are already updated
-	if(NULL != service->ipinfo.iface)
-		return TRUE;
-
 	GError *error = NULL;
 	GVariant *properties;
 	gsize i;
