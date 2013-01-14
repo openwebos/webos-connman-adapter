@@ -92,6 +92,7 @@ extern gboolean connman_service_disconnect(connman_service_t *service);
 extern gboolean connman_service_set_ipv4(connman_service_t *service, ipv4info_t *ipv4);
 extern gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns);
 extern gboolean connman_service_get_ipinfo(connman_service_t *service);
+extern GVariant *connman_service_fetch_properties(connman_service_t *service);
 extern void connman_service_update_properties(connman_service_t *service, GVariant *service_v);
 extern void connman_service_register_state_changed_cb(connman_service_t *service, connman_state_changed_cb func);
 

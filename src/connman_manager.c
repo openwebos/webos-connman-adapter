@@ -219,8 +219,9 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 			service = find_service_from_props(manager, service_v);
 			if(NULL != service)
 			{		
+				GVariant *properties = g_variant_get_child_value(service_v, 1);
 				g_message("Updating service %s",service->name);
-				connman_service_update_properties(service, service_v);
+				connman_service_update_properties(service, properties);
 			}
 			else
 			{
@@ -544,26 +545,28 @@ connman_technology_t *connman_manager_find_ethernet_technology (connman_manager_
  *
  */
 
-
 connman_service_t *connman_manager_get_connected_service (connman_manager_t *manager)
 {
 	if(NULL == manager)
 		return NULL;
 
 	GSList *iter;
+	gboolean service_found = FALSE;
+	connman_service_t *service = NULL;
 	for (iter = manager->wired_services; NULL != iter; iter = iter->next)
 	{
-		connman_service_t *service = (struct connman_service *)(iter->data);
+		service = (struct connman_service *)(iter->data);
 		int service_state = connman_service_get_state(service->state);
 		if(service_state == CONNMAN_SERVICE_STATE_ONLINE)
 		{
-			return service;
+			service_found = TRUE;
+			break;
 		}
 	}
 
-	for (iter = manager->wifi_services; NULL != iter; iter = iter->next)
+	for (iter = manager->wifi_services; (service_found == FALSE) && (NULL != iter); iter = iter->next)
 	{
-		connman_service_t *service = (struct connman_service *)(iter->data);
+		service = (struct connman_service *)(iter->data);
 		if(NULL == service->state)
 			continue;
 
@@ -575,13 +578,22 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 			case  CONNMAN_SERVICE_STATE_CONFIGURATION:
 			case  CONNMAN_SERVICE_STATE_READY:
 			case  CONNMAN_SERVICE_STATE_ONLINE:
-				return service;
+				service_found = TRUE;
+				break;
 			default:
 				continue;
 		}
 	}
+	if(service_found)
+	{
+		GVariant *properties = connman_service_fetch_properties(service);
+		if(NULL != properties)
+		{
+			connman_service_update_properties(service, properties);
+			return service;
+		}
+	}
 	return NULL;
-
 }
 
 /**

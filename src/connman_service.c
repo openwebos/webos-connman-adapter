@@ -377,22 +377,35 @@ void connman_service_register_state_changed_cb(connman_service_t *service, connm
 }
 
 
+GVariant *connman_service_fetch_properties(connman_service_t *service)
+{
+	GError *error = NULL;
+	GVariant *properties;
+	gsize i;
+
+	connman_interface_service_call_get_properties_sync(service->remote, &properties, NULL, &error);
+	if (error)
+	{
+		g_message("Error: %s", error->message);
+		g_error_free(error);
+		return NULL;
+	}
+	return properties;
+}
+
 /**
  * @brief Update service properties from the supplied variant
  *
- * @param service_v
+ * @param properties
  */
 
-void connman_service_update_properties(connman_service_t *service, GVariant *service_v)
+void connman_service_update_properties(connman_service_t *service, GVariant *properties)
 {
-	if(NULL == service || NULL == service_v)
+	if(NULL == service || NULL == properties)
 		return;
 
-	GVariant *properties;
 	gsize i;
 	
-	properties = g_variant_get_child_value(service_v, 1);
-
 	for (i = 0; i < g_variant_n_children(properties); i++)
 	{
 		GVariant *property = g_variant_get_child_value(properties, i);
@@ -400,7 +413,6 @@ void connman_service_update_properties(connman_service_t *service, GVariant *ser
 		GVariant *val_v = g_variant_get_child_value(property, 1);
 		GVariant *val = g_variant_get_variant(val_v);
 		const gchar *key = g_variant_get_string(key_v, NULL);
-
 		if (g_str_equal(key, "Name"))
 			service->name =  g_variant_dup_string(val, NULL);
 
@@ -486,7 +498,8 @@ connman_service_t *connman_service_new(GVariant *variant)
 	service->sighandler_id = g_signal_connect_data(G_OBJECT(service->remote), "property-changed",
 		G_CALLBACK(property_changed_cb), service, NULL, 0);
 
-	connman_service_update_properties(service, variant);
+	GVariant *properties = g_variant_get_child_value(variant, 1);
+	connman_service_update_properties(service, properties);
 
 	return service;
 }
