@@ -249,6 +249,34 @@ gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
 }
 
 /**
+ * Set auto-connect property for the given service
+ *
+ * @param  service
+ * @param  value
+ */
+
+gboolean connman_service_set_autoconnect(connman_service_t *service, gboolean value)
+{
+	if(NULL == service)
+		return FALSE;
+
+	GError *error = NULL;
+
+	connman_interface_service_call_set_property_sync(service->remote,
+						  "AutoConnect",
+						  g_variant_new_variant(g_variant_new_boolean(value)),
+						  NULL, &error);
+	if (error)
+	{
+		g_message("%s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/**
  * @brief  Get all the network related information for a connected service (in online state)
  *
  * @param  service

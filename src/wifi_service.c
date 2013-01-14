@@ -249,6 +249,7 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 			create_new_profile(service->name, service->security, service->hidden);
 		else
 			create_new_profile(service->name, NULL, service->hidden);
+		connman_service_set_autoconnect(service, TRUE);
 	}
 
 	/* Unset agent callback as we no longer have any valid input for connman available */
@@ -1237,7 +1238,9 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 					default:
 						continue;
 				}
-
+				/* Deleting profile for this ssid, so set autoconnect property for this 
+				   service to FALSE so that connman doesn't autoconnect to this service next time */
+				connman_service_set_autoconnect(service, FALSE);
 			}
 		}
 		delete_profile(profile);
