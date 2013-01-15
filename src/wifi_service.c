@@ -181,6 +181,9 @@ static void add_connected_network_status(jvalue_ref *reply, connman_service_t *c
 			jobject_put(ip_info, jstring_create(dns_str), jstring_create(connected_service->ipinfo.dns[i]));
 		}
 
+		if(connected_service->ipinfo.ipv4.method)
+			jobject_put(ip_info, J_CSTR_TO_JVAL("method"), jstring_create(connected_service->ipinfo.ipv4.method));
+
 		jobject_put(*reply,  J_CSTR_TO_JVAL("ipInfo"), ip_info);
         }
 }

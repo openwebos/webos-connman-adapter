@@ -41,83 +41,53 @@ static LSHandle *pLsHandle, *pLsPublicHandle;
 /**
  * @brief Fill in information about the system's wifi status
  *
- * @param wifi_status
+ * @param status
  */
 
-static void update_wifi_status(jvalue_ref *wifi_status)
+static void update_connection_status(connman_service_t *connected_service, jvalue_ref *status)
 {
-	if(NULL == wifi_status)
+	if(NULL == connected_service || NULL == status)
 		return;
 
-	/* Get the service which is connecting or already in connected state */
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if((connected_service != NULL) && connman_service_type_wifi(connected_service))
+	int connman_state = 0;
+	connman_state = connman_service_get_state(connected_service->state);
+
+	if(connman_state == CONNMAN_SERVICE_STATE_ONLINE
+		|| connman_state == CONNMAN_SERVICE_STATE_READY)
 	{
-		int connman_state = 0;
+		connman_service_get_ipinfo(connected_service);
 
-		if(connected_service->state != NULL)
+		jobject_put(*status, J_CSTR_TO_JVAL("state"), jstring_create("connected"));
+		if(NULL != connected_service->ipinfo.iface)
+			jobject_put(*status, J_CSTR_TO_JVAL("interfaceName"), jstring_create(connected_service->ipinfo.iface));
+		if(NULL != connected_service->ipinfo.ipv4.address)
+			jobject_put(*status, J_CSTR_TO_JVAL("ipAddress"), jstring_create(connected_service->ipinfo.ipv4.address));
+		if(NULL != connected_service->ipinfo.ipv4.netmask)
+			jobject_put(*status, J_CSTR_TO_JVAL("netmask"), jstring_create(connected_service->ipinfo.ipv4.netmask));
+		if(NULL != connected_service->ipinfo.ipv4.gateway)
+			jobject_put(*status, J_CSTR_TO_JVAL("gateway"), jstring_create(connected_service->ipinfo.ipv4.gateway));
+		
+		gsize i;
+		char dns_str[16];
+		for (i = 0; i < g_strv_length(connected_service->ipinfo.dns); i++)
 		{
-			connman_state = connman_service_get_state(connected_service->state);
-			if(connman_state == CONNMAN_SERVICE_STATE_ONLINE
-				|| connman_state == CONNMAN_SERVICE_STATE_READY)
-			{
-				connman_service_get_ipinfo(connected_service);
-
-				jobject_put(*wifi_status, J_CSTR_TO_JVAL("state"), jstring_create("connected"));
-				if(NULL != connected_service->ipinfo.ipv4.address)
-					jobject_put(*wifi_status, J_CSTR_TO_JVAL("ipAddress"), jstring_create(connected_service->ipinfo.ipv4.address));
-				if(NULL != connected_service->ipinfo.iface)
-					jobject_put(*wifi_status, J_CSTR_TO_JVAL("interfaceName"), jstring_create(connected_service->ipinfo.iface));
-				if(NULL != connected_service->name)
-					jobject_put(*wifi_status, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
-				//TODO Need to implement function to check if the system can connect to internet
-				jobject_put(*wifi_status, J_CSTR_TO_JVAL("onInternet"), jstring_create("yes"));
-				jobject_put(*wifi_status, J_CSTR_TO_JVAL("isWakeOnWifiEnabled"), jboolean_create(false));
-				return;
-			}
+			sprintf(dns_str,"dns%d",i+1);
+			jobject_put(*status, jstring_create(dns_str), jstring_create(connected_service->ipinfo.dns[i]));
 		}
-	}
 
-	jobject_put(*wifi_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
-}
-
-/**
- * @brief Fill in information about the system's wired status
- *
- * @param wired_status
- */
-
-static void update_wired_status(jvalue_ref *wired_status)
-{
-	if(NULL == wired_status)
-		return;
-
-	/* Get the service which is connecting or already in connected state */
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if((connected_service != NULL) && connman_service_type_ethernet(connected_service))
-	{
-		int connman_state = 0;
-
-		if(connected_service->state != NULL)
+		if(NULL != connected_service->ipinfo.ipv4.method)
+			jobject_put(*status, J_CSTR_TO_JVAL("method"), jstring_create(connected_service->ipinfo.ipv4.method));
+		if(connman_service_type_wifi(connected_service))
 		{
-			connman_state = connman_service_get_state(connected_service->state);
-
-			if(connman_state == CONNMAN_SERVICE_STATE_ONLINE)
-			{
-				connman_service_get_ipinfo(connected_service);
-
-				jobject_put(*wired_status, J_CSTR_TO_JVAL("state"), jstring_create("connected"));
-				if(NULL != connected_service->ipinfo.ipv4.address)
-					jobject_put(*wired_status, J_CSTR_TO_JVAL("ipAddress"), jstring_create(connected_service->ipinfo.ipv4.address));
-				if(NULL != connected_service->ipinfo.iface)
-					jobject_put(*wired_status, J_CSTR_TO_JVAL("interfaceName"), jstring_create(connected_service->ipinfo.iface));
-				//TODO Need to implement function to check if the system can connect to internet
-				jobject_put(*wired_status, J_CSTR_TO_JVAL("onInternet"), jstring_create("yes"));
-				return;
-			}
+			if(NULL != connected_service->name)
+				jobject_put(*status, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
+			jobject_put(*status, J_CSTR_TO_JVAL("isWakeOnWifiEnabled"), jboolean_create(false));
 		}
+		jobject_put(*status, J_CSTR_TO_JVAL("onInternet"), jstring_create("yes"));
 	}
-	jobject_put(*wired_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
+	else
+		jobject_put(*status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
+
 }
 
 /**
@@ -132,14 +102,32 @@ static void send_connection_status(jvalue_ref *reply)
 	gboolean online = connman_manager_is_manager_online(manager);
 	jobject_put(*reply, J_CSTR_TO_JVAL("isInternetConnectionAvailable"), jboolean_create(online));
 
-	jvalue_ref wifi_status = jobject_create();
-	jvalue_ref wired_status = jobject_create();
+	jvalue_ref connected_status = jobject_create();
+	jvalue_ref disconnected_status = jobject_create();
 
-	update_wifi_status(&wifi_status);
-	update_wired_status(&wired_status);
+	jobject_put(disconnected_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
 
-	jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), wifi_status);
-	jobject_put(*reply, J_CSTR_TO_JVAL("wired"), wired_status);
+	/* Get the service which is connecting or already in connected state */
+	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
+	if(NULL != connected_service)
+	{
+		update_connection_status(connected_service, &connected_status);
+		if(connman_service_type_wifi(connected_service))
+		{
+			jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), connected_status);
+			jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_status);
+		}
+		else
+		{
+			jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_status);
+			jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_status);
+		}
+	}
+	else
+	{
+		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_status);
+		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_status);
+	}
 }
 
 
