@@ -557,7 +557,8 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 	{
 		service = (struct connman_service *)(iter->data);
 		int service_state = connman_service_get_state(service->state);
-		if(service_state == CONNMAN_SERVICE_STATE_ONLINE)
+		if(service_state == CONNMAN_SERVICE_STATE_ONLINE
+			|| service_state == CONNMAN_SERVICE_STATE_READY)
 		{
 			service_found = TRUE;
 			break;

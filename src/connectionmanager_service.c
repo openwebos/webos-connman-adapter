@@ -83,7 +83,8 @@ static void update_connection_status(connman_service_t *connected_service, jvalu
 				jobject_put(*status, J_CSTR_TO_JVAL("ssid"), jstring_create(connected_service->name));
 			jobject_put(*status, J_CSTR_TO_JVAL("isWakeOnWifiEnabled"), jboolean_create(false));
 		}
-		jobject_put(*status, J_CSTR_TO_JVAL("onInternet"), jstring_create("yes"));
+		const char *s = (connman_state == CONNMAN_SERVICE_STATE_ONLINE)?"yes":"no";
+		jobject_put(*status, J_CSTR_TO_JVAL("onInternet"), jstring_create(s));
 	}
 	else
 		jobject_put(*status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
@@ -125,8 +126,10 @@ static void send_connection_status(jvalue_ref *reply)
 	}
 	else
 	{
-		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_status);
-		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_status);
+		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_status);
+		jvalue_ref disconnected_wifi_status = jobject_create();
+		jobject_put(disconnected_wifi_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
+		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_wifi_status);
 	}
 }
 
@@ -168,7 +171,7 @@ void connectionmanager_send_status(void)
  *  JSON format:
  *
  *  luna://com.palm.connectionmanager/getstatus {}
- *  luna://com.palm.connectionmanager/getstatus {"subscribe":true}
+ *  luna://com.palm.connectionmanager/getstatus {"subscribed":true}
  *
  *  @param sh
  *  @param message
