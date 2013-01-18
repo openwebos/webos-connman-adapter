@@ -29,6 +29,9 @@
 #include <stdbool.h>
 #include <time.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <linux/if.h>
 #include <pbnjson.h>
 
 #include "common.h"
@@ -574,6 +577,98 @@ cleanup:
 
 }
 
+#define MAC_ADDR_LEN    6
+
+// mac_address must be a pointer to a buffer of at least length 18 (12 hex digits + 5 colons + a null)
+//
+// Return string is "HH:HH:HH:HH:HH:HH\0"
+
+static int get_wifi_mac_address(const char *interface, char *mac_address)
+{
+        struct ifreq ifr;
+        int s;
+        int ret = -1;
+
+        s = socket(AF_INET, SOCK_DGRAM, 0);
+        if(s == -1)
+        {
+                return ret;
+        }
+
+        strcpy(ifr.ifr_name, interface);
+        if(ioctl(s, SIOCGIFHWADDR, &ifr) == 0)
+        {
+                int i;
+                for(i = 0; i < MAC_ADDR_LEN; i++)
+                {
+                        sprintf(&mac_address[i*3], "%02X%s", (unsigned char)ifr.ifr_hwaddr.sa_data[i], (i < (MAC_ADDR_LEN - 1)) ? ":" : "");
+                }
+                ret = 0;
+        }
+        return ret;
+}
+
+/**
+ * Handler for "getinfo" command.
+ *
+ * JSON format:
+ * luna://com.palm.connectionmanager/getinfo {}
+ */
+
+static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
+{
+	jvalue_ref reply = jobject_create();
+	LSError lserror;
+	LSErrorInit(&lserror);
+	char wifi_mac_address[32]={0}, wired_mac_address[32]={0};
+
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+	if(get_wifi_mac_address(CONNMAN_WIFI_INTERFACE_NAME, wifi_mac_address) == 0)
+	{
+		jvalue_ref wifi_info = jobject_create();
+		jobject_put(wifi_info, J_CSTR_TO_JVAL("macAddress"),jstring_create(wifi_mac_address));
+		jobject_put(reply, J_CSTR_TO_JVAL("wifiInfo"), wifi_info);
+	}
+	else
+		g_message("Error in fetching mac address for wifi interface");
+
+
+	if(get_wifi_mac_address(CONNMAN_WIRED_INTERFACE_NAME, wired_mac_address) == 0)
+	{
+		jvalue_ref wired_info = jobject_create();
+		jobject_put(wired_info, J_CSTR_TO_JVAL("macAddress"),jstring_create(wired_mac_address));
+		jobject_put(reply, J_CSTR_TO_JVAL("wiredInfo"), wired_info);
+	}
+	else
+		g_message("Error in fetching mac address for wired interface");
+
+	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(!response_schema)
+	{
+		LSMessageReplyErrorUnknown(sh,message);
+		goto cleanup;
+	}
+
+	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror))
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
+
+	jschema_release(&response_schema);
+
+	cleanup:
+	if (LSErrorIsSet(&lserror))
+	{
+		LSErrorPrint(&lserror, stderr);
+		LSErrorFree(&lserror);
+	}
+
+	j_release(&reply);
+	return true;
+}
+
 /**
  * com.palm.connectionmanager service Luna Method Table
  */
@@ -583,6 +678,7 @@ static LSMethod connectionmanager_methods[] = {
     { LUNA_METHOD_SETIPV4,              handle_set_ipv4_command },
     { LUNA_METHOD_SETDNS,               handle_set_dns_command },
     { LUNA_METHOD_SETSTATE,             handle_set_state_command },
+    { LUNA_METHOD_GETINFO,		handle_get_info_command },
     { },
 };
 

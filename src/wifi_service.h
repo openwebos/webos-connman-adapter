@@ -36,7 +36,6 @@
 #define LUNA_METHOD_CONNECT                 "connect"
 #define LUNA_METHOD_FINDNETWORKS            "findnetworks" 
 #define LUNA_METHOD_DELETEPROFILE           "deleteprofile"
-#define LUNA_METHOD_GETINFO                 "getinfo"
 #define LUNA_METHOD_GETPROFILE              "getprofile"
 #define LUNA_METHOD_GETPROFILELIST          "getprofilelist"
 #define LUNA_METHOD_GETSTATUS               "getstatus"

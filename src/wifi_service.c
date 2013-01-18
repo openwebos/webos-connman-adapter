@@ -1256,102 +1256,6 @@ cleanup:
 }
 
 
-#define MAC_ADDR_LEN	6
-
-// mac_address must be a pointer to a buffer of at least length 18 (12 hex digits + 5 colons + a null)
-//
-// Return string is "HH:HH:HH:HH:HH:HH\0"
-
-static int get_wifi_mac_address(char *mac_address)
-{
-	struct ifreq ifr;
-	int s;
-	int ret = -1;
-
-	s = socket(AF_INET, SOCK_DGRAM, 0);
-	if(s == -1)
-	{
-		return ret;
-	}
-
-	strcpy(ifr.ifr_name, CONNMAN_WIFI_INTERFACE_NAME);
-	if(ioctl(s, SIOCGIFHWADDR, &ifr) == 0)
-	{
-		int i;
-		for(i = 0; i < MAC_ADDR_LEN; i++)
-		{
-			sprintf(&mac_address[i*3], "%02X%s", (unsigned char)ifr.ifr_hwaddr.sa_data[i], (i < (MAC_ADDR_LEN - 1)) ? ":" : "");
-		}
-		ret = 0;
-	}
-	return ret;
-}
-
-/**
- * Handler for "getinfo" command.
- *
- * JSON format:
- * luna://com.palm.wifi/getinfo {}
- */
-
-static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* context)
-{
-	if(!connman_status_check(manager, sh, message))
-		return true;
-
-	if(!wifi_technology_status_check(sh, message))
-		return true;
-
-	jvalue_ref reply = jobject_create();
-	LSError lserror;
-	LSErrorInit(&lserror);
-	char mac_address[32]={0};
-
-	if(get_wifi_mac_address(mac_address) < 0)
-	{
-		LSMessageReplyErrorUnknown(sh,message);
-		goto cleanup;
-	}
-
-	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
-
-	jvalue_ref wifi_info = jobject_create();
-
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("macAddress"),jstring_create(mac_address));
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("regionCode"),jnumber_create_i32(0));
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("wakeOnWlan"),jstring_create("disabled"));
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("wmm"),jstring_create("disabled"));
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("roaming"),jstring_create("disabled"));
-	jobject_put(wifi_info, J_CSTR_TO_JVAL("powerSave"),jstring_create("disabled"));
-
-	jobject_put(reply, J_CSTR_TO_JVAL("wifiInfo"), wifi_info);
-
-	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-	if(!response_schema)
-	{
-		LSMessageReplyErrorUnknown(sh,message);
-		goto cleanup;
-	}
-
-	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror))
-	{
-		LSErrorPrint(&lserror, stderr);
-		LSErrorFree(&lserror);
-	}
-
-	jschema_release(&response_schema);
-
-cleanup:
-	if (LSErrorIsSet(&lserror))
-        {
-                LSErrorPrint(&lserror, stderr);
-                LSErrorFree(&lserror);
-        }
-
-	j_release(&reply);
-	return true;
-}
-
 static void agent_registered_callback(gpointer user_data)
 {
 	gchar *agent_path;
@@ -1369,7 +1273,6 @@ static void agent_registered_callback(gpointer user_data)
 static LSMethod wifi_methods[] = {
     { LUNA_METHOD_GETPROFILELIST,	handle_get_profilelist_command },
     { LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
-    { LUNA_METHOD_GETINFO,		handle_get_info_command },
     { LUNA_METHOD_SETSTATE,		handle_set_state_command },
     { LUNA_METHOD_CONNECT,		handle_connect_command },
     { LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
