@@ -19,7 +19,7 @@
 /**
  * @file connman_service.c
  *
- * @brief Connman service interface
+ *   Connman service interface
  *
  */
 
@@ -27,10 +27,7 @@
 #include "utils.h"
 
 /**
- * @brief  Check if the type of the service is wifi
- *
- * @param  service
- *
+ * Check if the type of the service is wifi (see header for API details)
  */
 
 gboolean connman_service_type_wifi(connman_service_t *service)
@@ -41,10 +38,7 @@ gboolean connman_service_type_wifi(connman_service_t *service)
 }
 
 /**
- * @brief  Check if the type of the service is ethernet
- *
- * @param  service
- *
+ * Check if the type of the service is ethernet (see header for API details)
  */
 
 gboolean connman_service_type_ethernet(connman_service_t *service)
@@ -55,11 +49,8 @@ gboolean connman_service_type_ethernet(connman_service_t *service)
 }
 
 /**
- * @brief  Map the service connection status to corresponding webos state
- * This function is required to send appropriate connection status to the webos world.
- *
- * @param  connman_state
- *
+ * Map the service connection status to corresponding webos state 
+ * (see header for API details)
  */
 
 gchar *connman_service_get_webos_state(int connman_state)
@@ -86,10 +77,8 @@ gchar *connman_service_get_webos_state(int connman_state)
 }
 
 /**
- * @brief  Convert the connection state string to its enum value
- *
- * @param  state
- *
+ * Convert the connection state string to its enum value
+ * (see header for API details)
  */
 
 int connman_service_get_state(const gchar *state)
@@ -117,6 +106,9 @@ int connman_service_get_state(const gchar *state)
 	return result;
 }
 
+/**
+ * Asynchronous connect callback for a remote "connect" call
+ */
 static void connect_callback(GDBusConnection *connection, GAsyncResult *res, gpointer user_data)
 {
 	GError *error = NULL;
@@ -140,10 +132,7 @@ static void connect_callback(GDBusConnection *connection, GAsyncResult *res, gpo
 }
 
 /**
- * @brief  Connect to a remote connman service
- *
- * @param  service
- *
+ * Connect to a remote connman service (see header for API details)
  */
 
 gboolean connman_service_connect(connman_service_t *service, connman_service_connect_cb cb, gpointer user_data)
@@ -162,10 +151,7 @@ gboolean connman_service_connect(connman_service_t *service, connman_service_con
 
 
 /**
- * @brief  Disconnect from a remote connman service
- *
- * @param  service
- *
+ * Disconnect from a remote connman service (see header for API details)
  */
 
 gboolean connman_service_disconnect(connman_service_t *service)
@@ -186,10 +172,7 @@ gboolean connman_service_disconnect(connman_service_t *service)
 }
 
 /**
- * @brief  Sets ipv4 properties for the connman service
- *
- * @param  service
- *
+ * Sets ipv4 properties for the connman service (see header for API details)
  */
 
 gboolean connman_service_set_ipv4(connman_service_t *service, ipv4info_t *ipv4)
@@ -224,10 +207,7 @@ gboolean connman_service_set_ipv4(connman_service_t *service, ipv4info_t *ipv4)
 }
 
 /**
- * @brief  Sets nameservers for the connman service
- *
- * @param  service
- *
+ * Sets nameservers for the connman service (see header for API details)
  */
 
 gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
@@ -249,10 +229,7 @@ gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
 }
 
 /**
- * Set auto-connect property for the given service
- *
- * @param  service
- * @param  value
+ * Set auto-connect property for the given service (see header for API details)
  */
 
 gboolean connman_service_set_autoconnect(connman_service_t *service, gboolean value)
@@ -277,10 +254,8 @@ gboolean connman_service_set_autoconnect(connman_service_t *service, gboolean va
 }
 
 /**
- * @brief  Get all the network related information for a connected service (in online state)
- *
- * @param  service
- *
+ * Get all the network related information for a connected service (in online state)
+ * (see header for API details)
  */
 
 gboolean connman_service_get_ipinfo(connman_service_t *service)
@@ -373,13 +348,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 
 
 /**
- * @brief  Callback for service's "property_changed" signal
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  service
- *
+ * Callback for service's "property_changed" signal
  */
 
 static void
@@ -396,7 +365,9 @@ property_changed_cb(ConnmanInterfaceService *proxy, gchar * property, GVariant *
 		(service->handle_state_change_fn)((gpointer)service, service->state);
 }
 
-
+/**
+ * Register for service's state changed case  (see header for API details)
+ */
 void connman_service_register_state_changed_cb(connman_service_t *service, connman_state_changed_cb func)
 {
 	if(NULL == func)
@@ -404,7 +375,9 @@ void connman_service_register_state_changed_cb(connman_service_t *service, connm
         service->handle_state_change_fn = func;
 }
 
-
+/** 
+ * Retrieve the list of properties for a service (see header for API details)
+ */
 GVariant *connman_service_fetch_properties(connman_service_t *service)
 {
 	GError *error = NULL;
@@ -422,9 +395,7 @@ GVariant *connman_service_fetch_properties(connman_service_t *service)
 }
 
 /**
- * @brief Update service properties from the supplied variant
- *
- * @param properties
+ * Update service properties from the supplied variant  (see header for API details)
  */
 
 void connman_service_update_properties(connman_service_t *service, GVariant *properties)
@@ -481,10 +452,7 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 }
 
 /**
- * @brief  Create a new connman service instance and set its properties
- *
- * @param  variant
- *
+ * Create a new connman service instance and set its properties  (see header for API details)
  */
 
 connman_service_t *connman_service_new(GVariant *variant)
@@ -534,11 +502,7 @@ connman_service_t *connman_service_new(GVariant *variant)
 
 
 /**
- * @brief  Free the connman service instance 
- *
- * @param  data
- * @param  user_data
- *
+ * Free the connman service instance  (see header for API details)
  */
 
 void connman_service_free(gpointer data, gpointer user_data)
