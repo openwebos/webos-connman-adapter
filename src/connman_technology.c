@@ -27,11 +27,7 @@
 #include "connman_technology.h"
 
 /**
- * @brief  Power on/off the given technology  
- *
- * @param  technology
- * @param  state
- *
+ * Power on/off the given technology (see header for API details)
  */
 
 gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state)
@@ -57,10 +53,7 @@ gboolean connman_technology_set_powered(connman_technology_t *technology, gboole
 }
 
 /**
- * @brief  Scan the network for available services
- *
- * @param  technology
- *
+ * Scan the network for available services (see header for API details)
  */
 
 gboolean connman_technology_scan_network(connman_technology_t *technology)
@@ -81,13 +74,7 @@ gboolean connman_technology_scan_network(connman_technology_t *technology)
 }
 
 /**
- * @brief  Callback for technology's "property_changed" signal
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  technology
- *
+ * Callback for technology's "property_changed" signal
  */
 
 static void
@@ -99,6 +86,11 @@ property_changed_cb(ConnmanInterfaceTechnology *proxy,const gchar * property, GV
 }
 
 
+/**
+ * Register for technology's "properties_changed" signal, calling the provided function whenever the callback function
+ * for the signal is called (see header for API details)
+ */
+
 void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func)
 {
 	if(NULL == func)
@@ -109,10 +101,7 @@ void connman_technology_register_property_changed_cb(connman_technology_t *techn
 
 
 /**
- * @brief  Create a new technology instance and set its properties
- *
- * @param  variant
- *
+ * Create a new technology instance and set its properties (see header fpr API details)
  */
 
 connman_technology_t *connman_technology_new(GVariant *variant)
@@ -178,11 +167,7 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 }
 
 /**
- * @brief  Free the technology instance
- *
- * @param  data
- * @param  user_data
- *
+ * Free the technology instance ( see header for API details)
  */
 
 void connman_technology_free(gpointer data, gpointer user_data)

@@ -27,10 +27,12 @@
 #include "connman_manager.h"
 
 /**
- * @brief  Retrieve all the properties of the given manager instance
+ * Retrieve all the properties of the given manager instance
  *
- * @param  manager
+ * @param[IN]  manager A manager instance
  *
+ * @return A GVariant pointer containing manager properties, NULL if
+ *         the call to get properties fails
  */
 
 static GVariant *connman_manager_get_properties(connman_manager_t *manager)
@@ -53,6 +55,15 @@ static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 	return ret;
 }
 
+/**
+ * Traverse through the given service list, comparing each service with the path provided
+ * returning the service with the matching path
+ *
+ * @param[IN] service_list Manager's wired / wifi service list
+ * @param[IN] path Service DBus object path to compare
+ *
+ * @return service with matching path, NULL if no matching service found
+ */
 
 static connman_service_t *find_service_from_path(GSList *service_list, const gchar *path)
 {
@@ -69,14 +80,15 @@ static connman_service_t *find_service_from_path(GSList *service_list, const gch
 }
 
 /**
- * @brief  Get the path from the variant argument and get the service
+ * Get the path from the variant argument and get the service
  * in the manager's list matching the path in the variant
  *
- * @param  manager
- * @param  service_v
+ * @param[IN]  manager A connman manager instance
+ * @param[IN]  service_v A GVariant listing service properties
  *
+ * @return service with the path matching the one in service_v, NULL if
+ *         no such service found
  */
-
 
 static connman_service_t *find_service_from_props(connman_manager_t *manager,
 			GVariant	*service_v)
@@ -95,6 +107,16 @@ static connman_service_t *find_service_from_props(connman_manager_t *manager,
 	service = find_service_from_path(manager->wired_services, path);
 	return service;
 }
+
+/*
+ * Traverse through the manager's technologies list and return the technology
+ * matching the path provided
+ *
+ * @param[IN] manager A connman manager instance
+ * @param[IN] path Technology object path to compare
+ *
+ * @return Technology with matching path, NULL if matching technology not found
+ */
 
 static connman_technology_t *find_technology_by_path(connman_manager_t *manager,
 			gchar *path)
@@ -118,10 +140,11 @@ static connman_technology_t *find_technology_by_path(connman_manager_t *manager,
 }
 
 /**
- * @brief  Check if the given service's "Ethernet" properties matches system's wifi/wired interface
+ * Check if the given service's "Ethernet" properties matches system's wifi/wired interface
  *
- * @param  service_v
+ * @param[IN]  service_v GVariant listing service properties
  *
+ * @return TRUE if the service is either on wifi/wired interface, FALSE otherwise
  */
 
 static gboolean service_on_configured_iface(GVariant	*service_v)
@@ -167,7 +190,7 @@ static gboolean service_on_configured_iface(GVariant	*service_v)
 }
 
 /**
- * @brief Compare the signal strengths of services and sort the list based on decreasing
+ * Compare the signal strengths of services and sort the list based on decreasing
  * signal strength. However the hidden service (if any) will always be put at the end of the list.
  */ 
 
@@ -180,6 +203,13 @@ static gint compare_signal_strength(connman_service_t *service1, connman_service
 		return 1;	// insert non-hidden service2 before hidden service1
 	return (service2->strength - service1->strength);
 }
+
+/**
+ * Add the given service to manager's wifi/wired list based on the type of service
+ *
+ * @param[IN] manager A connman manager instance
+ * @param[IN] service A service instance
+ */
 
 static add_service_to_list(connman_manager_t *manager, connman_service_t *service)
 {
@@ -194,11 +224,14 @@ static add_service_to_list(connman_manager_t *manager, connman_service_t *servic
 }
 
 /**
- * @brief Go through the list of services in the "services" parameter and if the service
+ * Go through the list of services in the "services" parameter and if the service
  * is already present in the manager's list , update its properties, and if not , add it
  * as a new service.
- * Return TRUE only if any service is updated or added, return FALSE otherwise
  *
+ * @param[IN] manager A manager instance
+ * @param[IN] services Properties of a new/existing service
+ *
+ * @return TRUE only if any service is updated or added, return FALSE otherwise
  */
 
 static gboolean connman_manager_update_services(connman_manager_t *manager, GVariant *services)
@@ -236,7 +269,12 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 }
 
 /**
- * @brief Remove services from the given list
+ * Remove services in the "services_removed" list from the given "service_list" list
+ *
+ * @param[IN] service_list Manager's wifi/wired list
+ * @param[IN] services_removed List of services removed
+ *
+ * @return TRUE only if any service is removed from the list, FALSE otherwise
  */
 
 static gboolean remove_services_from_list(GSList **service_list, gchar **services_removed)
@@ -277,8 +315,13 @@ static gboolean remove_services_from_list(GSList **service_list, gchar **service
 }
 
 /**
- * @brief Remove all the services in the services_removed string array from the manager's services list
- * one by one and return TRUE only if atleast one service is removed, else return FALSE
+ * Remove all the wifi services in the "services_removed" string array from the manager's wifi service list
+ * and thereafter removing wired services in "services_removed" from the manager's wired service list
+ *
+ * @param[IN] manager A manager instance
+ * @param[IN] services_removed List of services removed
+ *
+ * @return TRUE only if atleast one service is removed, else return FALSE
  *
  */
 
@@ -300,9 +343,9 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 }
 
 /**
- * @brief  Free the manager's services list
+ * Free the manager's services wifi and wired service list
  *
- * @param  manager
+ * @param[IN]  manager A manager instance
  *
  */
 
@@ -320,9 +363,9 @@ static void connman_manager_free_services(connman_manager_t *manager)
 }
 
 /**
- * @brief  Free the manager's technologies list
+ * Free the manager's technologies list
  *
- * @param  manager
+ * @param[IN]  manager A manager instance
  *
  */
 
@@ -337,10 +380,12 @@ static void connman_manager_free_technologies(connman_manager_t *manager)
 }
 
 /**
- * @brief  Retrieve all the services for the manager and add them to its list
+ * Retrieve all the services for the manager by making a "GetServices" remote call
+ * and add them to its list
  *
- * @param  manager
+ * @param[IN]  manager A manager instance
  *
+ * @return FALSE if the remote call fails
  */
 
 static gboolean connman_manager_add_services(connman_manager_t *manager)
@@ -380,10 +425,12 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 }
 
 /**
- * @brief  Retrieve all the technologies for the manager and add them to its list
+ * Retrieve all the technologies for the manager by making a "GetTechnologies" remote call
+ * and add them to its list
  *
- * @param  manager
+ * @param[IN]  manager A manager instance
  *
+ * @return FALSE if the remote call fails, TRUE otherwise
  */
 
 static gboolean connman_manager_add_technologies (connman_manager_t *manager)
@@ -417,11 +464,8 @@ static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 }
 
 /**
- * @brief  Check if the manager is not in offline mode and available to 
- * enable network connections
- *
- * @param  manager
- *
+ * Check if the manager is not in offline mode and available to 
+ * enable network connections (see header for API details)
  */
 
 gboolean connman_manager_is_manager_available (connman_manager_t *manager)
@@ -451,10 +495,8 @@ gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 }
 
 /**
- * @brief  Check if the manager in online ( its state is set to 'online')
- *
- * @param  manager
- *
+ * Check if the manager in online ( its state is set to 'online')
+ * (see header for API details)
  */
 
 gboolean connman_manager_is_manager_online (connman_manager_t *manager)
@@ -484,10 +526,8 @@ gboolean connman_manager_is_manager_online (connman_manager_t *manager)
 }
 
 /**
- * @brief  Go through the manager's technologies list and get the wifi one
- *
- * @param  manager
- *
+ * Go through the manager's technologies list and get the wifi one
+ * (see header for API details)
  */
 
 connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *manager)
@@ -511,10 +551,8 @@ connman_technology_t *connman_manager_find_wifi_technology (connman_manager_t *m
 }
 
 /**
- * @brief  Go through the manager's technologies list and get the ethernet one
- *
- * @param  manager
- *
+ * Go through the manager's technologies list and get the ethernet one
+ * (see header for API details)
  */
 
 connman_technology_t *connman_manager_find_ethernet_technology (connman_manager_t *manager)
@@ -538,11 +576,8 @@ connman_technology_t *connman_manager_find_ethernet_technology (connman_manager_
 }
 
 /**
- * @brief  Go through the manager's services list and get the one which is in "association",
- * "configuration", "ready" or "online" state 
- *
- * @param  manager
- *
+ * Go through the manager's services list and get the one which is in "association",
+ * "configuration", "ready" or "online" state (see header for API details)
  */
 
 connman_service_t *connman_manager_get_connected_service (connman_manager_t *manager)
@@ -598,13 +633,7 @@ connman_service_t *connman_manager_get_connected_service (connman_manager_t *man
 }
 
 /**
- * @brief  Callback for manager's "property_changed" signal
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  manager
- *
+ * Callback for manager's "property_changed" signal (see header for API details)
  */
 
 static void
@@ -619,13 +648,7 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
 
 
 /**
- * @brief  Callback for manager's "technology_added" signal
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  manager
- *
+ * Callback for manager's "technology_added" signal
  */
 
 static void
@@ -644,10 +667,7 @@ technology_added_cb(ConnmanInterfaceManager *proxy, gchar * path, GVariant *v,
 }
 
 /**
- * @brief  Callback for manager's "technology_removed" signal
- *
- * @param  manager
- *
+ * Callback for manager's "technology_removed" signal
  */
 
 static void
@@ -664,13 +684,7 @@ technology_removed_cb(ConnmanInterfaceManager *proxy, gchar * path,
 }
 
 /**
- * @brief  Callback for manager's "services_changed" signal
- *
- * @param  proxy
- * @param  property
- * @param  v
- * @param  manager
- *
+ * Callback for manager's "services_changed" signal
  */
 
 static void 
@@ -686,6 +700,10 @@ services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added,
 	}
 }
 
+/**
+ * Register for manager's "properties_changed" signal, calling the provided function whenever the callback function
+ * for the signal is called (see header for API details)
+ */
 
 void connman_manager_register_property_changed_cb(connman_manager_t *manager, connman_property_changed_cb func)
 {
@@ -693,6 +711,11 @@ void connman_manager_register_property_changed_cb(connman_manager_t *manager, co
 		return;
 	manager->handle_property_change_fn = func;
 }
+
+/**
+ * Register for manager's "services_changed" signal, calling the provided function whenever the callback function
+ * for the signal is called (see header for API details)
+ */
 
 void connman_manager_register_services_changed_cb(connman_manager_t *manager, connman_services_changed_cb func)
 {
@@ -703,10 +726,8 @@ void connman_manager_register_services_changed_cb(connman_manager_t *manager, co
 
 
 /**
- * @brief Register a agent instance on the specified dbus path with the manager
- *
- * @param DBus object path where the agents is available
- * @return TRUE, if agent was successfully registered with the manager, FALSE otherwise.
+ * Register a agent instance on the specified dbus path with the manager
+ * (see header for API details)
  **/
 
 gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar *path)
@@ -730,10 +751,8 @@ gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar 
 }
 
 /**
- * @brief Unegister a agent instance on the specified dbus path from the manager
- *
- * @param DBus object path where the agents is available
- * @return TRUE, if agent was successfully unregistered from the manager, FALSE otherwise.
+ * Unegister a agent instance on the specified dbus path from the manager
+ * (see header for API details)
  **/
 
 gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gchar *path)
@@ -755,8 +774,8 @@ gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gcha
 }
 
 /**
- * @brief  Initialize a new manager instance and update its services and technologies list
- *
+ * Initialize a new manager instance and update its services and technologies list
+ * (see header for API details)
  */
 
 connman_manager_t *connman_manager_new (void)
@@ -812,10 +831,7 @@ connman_manager_t *connman_manager_new (void)
 }
 
 /**
- * @brief  Free the manager instance
- *
- * @param  manager
- *
+ * Free the manager instance (see header for API details)
  */
 
 void connman_manager_free (connman_manager_t *manager)

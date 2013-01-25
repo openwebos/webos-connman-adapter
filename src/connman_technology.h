@@ -33,6 +33,10 @@
 
 #include "connman_common.h"
 
+/**
+ * Local instance of a connman technology
+ * Caches all required information for a technology
+ */
 typedef struct connman_technology
 {
 	ConnmanInterfaceTechnology *remote;
@@ -44,11 +48,51 @@ typedef struct connman_technology
 	connman_property_changed_cb     handle_property_change_fn;
 }connman_technology_t;
 
+/**
+ * Power on/off the given technology
+ *
+ * @param[IN]  technology A technology instance
+ * @param[IN]  state TRUE for power on, FALSE for off
+ *
+ * @return FALSE for any error, TRUE otherwise
+ */
 extern gboolean connman_technology_set_powered(connman_technology_t *technology, gboolean state);
+
+/**
+ * Scan the network for available services
+ * This is usually called to scan all wifi APs whenever the list of APs is requested
+ *
+ * @param[IN]  technology A technology instance
+ *
+ * @return FALSE for any error, TRUE otherwise
+ */
 extern gboolean connman_technology_scan_network(connman_technology_t *technology);
+
+/**
+ * Register for technology's "properties_changed" signal, calling the provided function whenever the callback function
+ * for the signal is called
+ *
+ * @param[IN] manager A technology instance
+ * @param[IN] func User function to register
+ *
+ */
 extern void connman_technology_register_property_changed_cb(connman_technology_t *technology, connman_property_changed_cb func);
 
+/**
+ * Create a new technology instance and set its properties
+ *
+ * @param[IN]  variant List of properties for a new technology
+ *
+ */
 extern connman_technology_t *connman_technology_new(GVariant *variant);
+
+/**
+ * Free the connman manager instance
+ *
+ * @param[IN] data Pointer to the manager to be freed
+ * @param[IN] user_data User data if any
+ */
+
 extern void connman_technology_free (gpointer data, gpointer user_data);
 
 #endif /* CONNMAN_TECHNOLOGY_H_ */
