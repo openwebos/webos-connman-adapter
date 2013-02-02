@@ -42,7 +42,7 @@
 static LSHandle *pLsHandle, *pLsPublicHandle;
 
 /**
- * @brief Fill in information about the system's wifi status
+ * @brief Fill in information about the system's connection status
  *
  * @param status
  */
@@ -54,7 +54,6 @@ static void update_connection_status(connman_service_t *connected_service, jvalu
 
 	int connman_state = 0;
 	connman_state = connman_service_get_state(connected_service->state);
-
 	if(connman_state == CONNMAN_SERVICE_STATE_ONLINE
 		|| connman_state == CONNMAN_SERVICE_STATE_READY)
 	{
@@ -106,34 +105,33 @@ static void send_connection_status(jvalue_ref *reply)
 	gboolean online = connman_manager_is_manager_online(manager);
 	jobject_put(*reply, J_CSTR_TO_JVAL("isInternetConnectionAvailable"), jboolean_create(online));
 
-	jvalue_ref connected_status = jobject_create();
-	jvalue_ref disconnected_status = jobject_create();
+	jvalue_ref connected_wired_status = jobject_create();
+	jvalue_ref disconnected_wired_status = jobject_create();
+	jvalue_ref connected_wifi_status = jobject_create();
+	jvalue_ref disconnected_wifi_status = jobject_create();
 
-	jobject_put(disconnected_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
+	jobject_put(disconnected_wired_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
+	jobject_put(disconnected_wifi_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
 
 	/* Get the service which is connecting or already in connected state */
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if(NULL != connected_service)
+	connman_service_t *connected_wired_service = connman_manager_get_connected_service(manager->wired_services);
+	if(NULL != connected_wired_service)
 	{
-		update_connection_status(connected_service, &connected_status);
-		if(connman_service_type_wifi(connected_service))
-		{
-			jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), connected_status);
-			jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_status);
-		}
-		else
-		{
-			jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_status);
-			jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_status);
-		}
+		update_connection_status(connected_wired_service, &connected_wired_status);
+		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_wired_status);
 	}
 	else
+		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_wired_status);
+
+	connman_service_t *connected_wifi_service = connman_manager_get_connected_service(manager->wifi_services);
+	if(NULL != connected_wifi_service)
 	{
-		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_status);
-		jvalue_ref disconnected_wifi_status = jobject_create();
-		jobject_put(disconnected_wifi_status, J_CSTR_TO_JVAL("state"), jstring_create("disconnected"));
-		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_wifi_status);
+		update_connection_status(connected_wifi_service, &connected_wifi_status);
+		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), connected_wifi_status);
 	}
+	else
+		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_wifi_status);
+
 }
 
 

@@ -576,57 +576,36 @@ connman_technology_t *connman_manager_find_ethernet_technology (connman_manager_
 }
 
 /**
- * Go through the manager's services list and get the one which is in "association",
- * "configuration", "ready" or "online" state (see header for API details)
+ * Go through the manager's given services list and get the one which is in 
+ * "ready" or "online" state (see header for API details)
  */
 
-connman_service_t *connman_manager_get_connected_service (connman_manager_t *manager)
+connman_service_t *connman_manager_get_connected_service (GSList *service_list)
 {
-	if(NULL == manager)
+	if(NULL == service_list)
 		return NULL;
 
 	GSList *iter;
-	gboolean service_found = FALSE;
-	connman_service_t *service = NULL;
-	for (iter = manager->wired_services; NULL != iter; iter = iter->next)
+	connman_service_t *service = NULL, *connected_service = NULL;
+	for (iter = service_list; NULL != iter; iter = iter->next)
 	{
 		service = (struct connman_service *)(iter->data);
 		int service_state = connman_service_get_state(service->state);
 		if(service_state == CONNMAN_SERVICE_STATE_ONLINE
 			|| service_state == CONNMAN_SERVICE_STATE_READY)
 		{
-			service_found = TRUE;
+			connected_service = service;
 			break;
 		}
 	}
 
-	for (iter = manager->wifi_services; (service_found == FALSE) && (NULL != iter); iter = iter->next)
+	if(connected_service != NULL)
 	{
-		service = (struct connman_service *)(iter->data);
-		if(NULL == service->state)
-			continue;
-
-		int service_state = connman_service_get_state(service->state);
-
-		switch(service_state)
-		{
-			case  CONNMAN_SERVICE_STATE_ASSOCIATION:
-			case  CONNMAN_SERVICE_STATE_CONFIGURATION:
-			case  CONNMAN_SERVICE_STATE_READY:
-			case  CONNMAN_SERVICE_STATE_ONLINE:
-				service_found = TRUE;
-				break;
-			default:
-				continue;
-		}
-	}
-	if(service_found)
-	{
-		GVariant *properties = connman_service_fetch_properties(service);
+		GVariant *properties = connman_service_fetch_properties(connected_service);
 		if(NULL != properties)
 		{
-			connman_service_update_properties(service, properties);
-			return service;
+			connman_service_update_properties(connected_service, properties);
+			return connected_service;
 		}
 	}
 	return NULL;

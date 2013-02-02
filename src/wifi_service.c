@@ -202,8 +202,8 @@ static void send_connection_status(jvalue_ref *reply)
 	jobject_put(*reply, J_CSTR_TO_JVAL("status"), jstring_create(is_wifi_powered() ? "serviceEnabled" : "serviceDisabled"));
 
 	/* Get the service which is connecting or already in connected state */
-	connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-	if(connected_service != NULL && connman_service_type_wifi(connected_service))
+	connman_service_t *connected_service = connman_manager_get_connected_service(manager->wifi_services);
+	if(connected_service != NULL)
 	{
 		add_connected_network_status(reply, connected_service);
 	}
@@ -374,15 +374,22 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 
 	g_variant_iter_init(&iter, fields);
 	while (g_variant_iter_next(&iter, "{sv}", &key, &value)) {
+		g_message("key : %s",key);
 		if (!strncmp(key, "Name", 10)) {
-			g_variant_builder_add(vabuilder, "{sv}", "Name",
-				g_variant_new("s", settings->ssid));
+			if(NULL != settings->ssid)
+			{
+				g_variant_builder_add(vabuilder, "{sv}", "Name",
+					g_variant_new("s", settings->ssid));
+			}
 		}
 		else if (!strncmp(key, "Passphrase", 10)) {
 			/* FIXME we're ignoring the other fields here as we're only connecting to
 			 * psk secured networks at the moment */
-			g_variant_builder_add(vabuilder, "{sv}", "Passphrase",
-				g_variant_new("s", settings->passkey));
+			if(NULL != settings->passkey)
+			{
+				g_variant_builder_add(vabuilder, "{sv}", "Passphrase",
+					g_variant_new("s", settings->passkey));
+			}
 		}
 	}
 
@@ -465,18 +472,12 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 				g_message("Connecting to ssid %s",service->name);
 
 			found_service = TRUE;
-			/* Register for 'state changed' signal for this service to update its connection status */
-			connman_service_register_state_changed_cb(service, service_state_changed_callback);
 
-			connman_service_t *connected_service = connman_manager_get_connected_service(manager);
-			if(connected_service != NULL)
+			connman_service_t *connected_service = connman_manager_get_connected_service(manager->wifi_services);
+			if(NULL != connected_service)
 			{
-				if(connman_service_type_ethernet(connected_service))
-				{
-					LSMessageReplyCustomError(service_req->handle, service_req->message, "Connected to wired network");
-					goto cleanup;
-				}
-				else if (connected_service != service) {
+				g_message("Connected wifi service name : %s",connected_service->name);
+				if(connected_service != service) {
 					connman_service_disconnect(connected_service);
 				}
 				else {
@@ -486,6 +487,8 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 					goto cleanup;
 				}
 			}
+			/* Register for 'state changed' signal for this service to update its connection status */
+			connman_service_register_state_changed_cb(service, service_state_changed_callback);
 			break;
 		}
 	}

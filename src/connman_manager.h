@@ -32,6 +32,14 @@
 #include "connman_technology.h"
 
 /**
+ * Callback function for handling any changes in connman services
+ *
+ * @param[IN] gpointer Any data to pass to this function
+ */
+typedef void (*connman_services_changed_cb)(gpointer);
+
+
+/**
  * Local instance of a connman manager
  *
  * Stores all required information, including current services and technologies
@@ -46,13 +54,6 @@ typedef struct connman_manager
 	connman_property_changed_cb	handle_property_change_fn;
 	connman_services_changed_cb	handle_services_change_fn;
 }connman_manager_t;
-
-/**
- * Callback function for handling any changes in connman services
- *
- * @param[IN] gpointer Any data to pass to this function
- */
-typedef void (*connman_services_changed_cb)(gpointer);
 
 /**
  * Check if the manager is NOT in offline mode, i.e available to enable network 
@@ -92,14 +93,14 @@ extern connman_technology_t *connman_manager_find_wifi_technology(connman_manage
 extern connman_technology_t *connman_manager_find_ethernet_technology(connman_manager_t *manager);
 
 /**
- * Go through the manager's services list ( both wifi and wired) and get the one which is in "association",
- * "configuration", "ready" or "online" state , i.e  one of the connecting/connected states.
+ * Go through the manager's given services list and get the one which is in "ready" or 
+ * "online" state , i.e  one of the connected states.
  *
- * @param[IN]  manager A manager instance
+ * @param[IN]  service_list Manager's service list (wired of wifi)
  *
- * @return Service which is in one of the desired states
+ * @return Service which is in one of the connected states
  */
-extern connman_service_t *connman_manager_get_connected_service(connman_manager_t *manager);
+extern connman_service_t *connman_manager_get_connected_service(GSList *service_list);
 
 /**
  * Register for manager's "properties_changed" signal, calling the provided function whenever the callback function
