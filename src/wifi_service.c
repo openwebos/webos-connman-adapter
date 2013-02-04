@@ -49,6 +49,8 @@
 typedef struct connection_settings {
 	char *passkey;
 	char *ssid;
+	gboolean wpsmode;
+	char *wpspin;
 } connection_settings_t;
 
 static LSHandle *pLsHandle, *pLsPublicHandle;
@@ -72,6 +74,7 @@ static void connection_settings_free(connection_settings_t *settings)
 {
 	g_free(settings->passkey);
 	g_free(settings->ssid);
+	g_free(settings->wpspin);
 	g_free(settings);
 }
 
@@ -365,30 +368,44 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 	GVariantIter iter;
 	gchar *key;
 	GVariant *value;
+
 	if (!g_variant_is_container(fields)) {
 		connection_settings_free(settings);
 		return NULL;
 	}
-
 	vabuilder = g_variant_builder_new("a{sv}");
 
 	g_variant_iter_init(&iter, fields);
-	while (g_variant_iter_next(&iter, "{sv}", &key, &value)) {
+	while (g_variant_iter_next(&iter, "{sv}", &key, &value))
+	{
 		g_message("key : %s",key);
-		if (!strncmp(key, "Name", 10)) {
+		if (!strncmp(key, "Name", 10))
+		{
 			if(NULL != settings->ssid)
 			{
 				g_variant_builder_add(vabuilder, "{sv}", "Name",
 					g_variant_new("s", settings->ssid));
 			}
 		}
-		else if (!strncmp(key, "Passphrase", 10)) {
+		else if (!strncmp(key, "Passphrase", 10))
+		{
 			/* FIXME we're ignoring the other fields here as we're only connecting to
 			 * psk secured networks at the moment */
 			if(NULL != settings->passkey)
 			{
 				g_variant_builder_add(vabuilder, "{sv}", "Passphrase",
 					g_variant_new("s", settings->passkey));
+			}
+		}
+		else if (!strncmp(key, "WPS", 10))
+		{
+			if(settings->wpsmode == TRUE)
+			{
+				if(settings->wpspin != NULL)
+				{
+					g_variant_builder_add(vabuilder, "{sv}", "WPS",
+						g_variant_new("s", settings->wpspin));
+				}
 			}
 		}
 	}
@@ -398,6 +415,7 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 
 	connection_settings_free(settings);
 
+	connman_agent_set_request_input_callback(agent, NULL, NULL);
 	return response;
 }
 
@@ -413,7 +431,6 @@ static void service_connect_callback(gboolean success, gpointer user_data)
 
 	LSMessageUnref(service_req->message);
 	g_free(service_req);
-	connman_agent_set_request_input_callback(agent, NULL, NULL);
 }
 
 /**
@@ -429,7 +446,10 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 	jvalue_ref enterprise_security_obj = NULL;
 	jvalue_ref passkey_obj = NULL;
 	jvalue_ref hidden_obj = NULL;
-	raw_buffer passkey_buf;
+	jvalue_ref wps_obj = NULL;
+	jvalue_ref wpspin_obj = NULL;
+
+	raw_buffer passkey_buf, wpspin_buf;
 	GSList *ap;
 	gboolean found_service = FALSE, hidden = FALSE, psk_security = FALSE;
 	connection_settings_t *settings = NULL;
@@ -476,7 +496,6 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 			connman_service_t *connected_service = connman_manager_get_connected_service(manager->wifi_services);
 			if(NULL != connected_service)
 			{
-				g_message("Connected wifi service name : %s",connected_service->name);
 				if(connected_service != service) {
 					connman_service_disconnect(connected_service);
 				}
@@ -515,6 +534,20 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 		{
 			LSMessageReplyCustomError(service_req->handle, service_req->message, "Not implemented");
 			goto cleanup;
+		}
+		else if (jobject_get_exists(security_obj, J_CSTR_TO_BUF("wps"), &wps_obj))
+		{
+			jboolean_get(wps_obj, &settings->wpsmode);
+			if (jobject_get_exists(security_obj, J_CSTR_TO_BUF("wpsPin"), &wpspin_obj))
+			{
+				wpspin_buf = jstring_get(wpspin_obj);
+				settings->wpspin = strdup(wpspin_buf.m_str);
+			}
+			else
+			{
+				// Setting a default value if no pin is provided
+				settings->wpspin = strdup("nopin");
+			}
 		}
 		else
 		{
