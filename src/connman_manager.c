@@ -281,22 +281,24 @@ static gboolean remove_services_from_list(GSList **service_list, gchar **service
 {
 	GSList *iter, *remove_list = NULL;
 	gboolean ret = FALSE;
+	gchar **services_removed_iter = services_removed;
 
 	/* look for removed services */
-	while(NULL != *services_removed)
+	while(NULL != *services_removed_iter)
 	{
 		for (iter = *service_list; NULL != iter; iter = iter->next)
 		{
 			connman_service_t *service = (connman_service_t *)(iter->data);
 
-			if (g_str_equal(service->path, *services_removed))
+			if (g_str_equal(service->path, *services_removed_iter))
 			{
 				g_message("Removing service : %s",service->name);
 				remove_list = g_slist_append(remove_list, service);
 				break;
     			}
 		}
-		*services_removed++;
+
+		*services_removed_iter++;
 	}
 
 	/* 
@@ -331,12 +333,8 @@ static gboolean connman_manager_remove_old_services(connman_manager_t *manager, 
 		return FALSE;
 
 	gboolean wifi_services_removed = FALSE, wired_services_removed = FALSE;
-	gchar ** services_removed_copy;
 
-	services_removed_copy = services_removed;
 	wifi_services_removed = remove_services_from_list(&manager->wifi_services, services_removed);
-
-	services_removed = services_removed_copy;
 	wired_services_removed = remove_services_from_list(&manager->wired_services, services_removed);
 
 	return (wifi_services_removed | wired_services_removed);
