@@ -212,6 +212,30 @@ static void send_connection_status(jvalue_ref *reply)
 	}
 }
 
+static void send_connection_status_to_subscribers(void)
+{
+	jvalue_ref reply = jobject_create();
+	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
+
+	send_connection_status(&reply);
+
+	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+	if(response_schema)
+	{
+		const char *payload = jvalue_tostring(reply, response_schema);
+		g_message("Sending payload : %s",payload);
+		LSError lserror;
+		LSErrorInit(&lserror);
+		if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror))
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jschema_release(&response_schema);
+	}
+	j_release(&reply);
+}
+
 /**
  *  @brief Callback function registered with connman service whenever any of its properties change
  *
@@ -227,13 +251,19 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 	if(NULL == service)
 		return;
 	g_message("Service %s state changed to %s",service->name, new_state);
+
 	int service_state = connman_service_get_state(service->state);
 	switch(service_state)
 	{
 		case  CONNMAN_SERVICE_STATE_CONFIGURATION:
+			break;
 		case  CONNMAN_SERVICE_STATE_READY:
 		case  CONNMAN_SERVICE_STATE_ONLINE:
+			send_connection_status_to_subscribers();
 			break;
+		case CONNMAN_SERVICE_STATE_IDLE:
+			send_connection_status_to_subscribers();
+			return;
 		default:
 			return;
 	}
@@ -588,26 +618,7 @@ static void manager_property_changed_callback(gpointer data, const gchar *proper
 	/* Send getstatus method to all is subscribers whenever manager's state changes */
 	if(g_str_equal(property,"State"))
 	{
-		jvalue_ref reply = jobject_create();
-		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
-
-		send_connection_status(&reply);
 		connectionmanager_send_status();
-
-		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-		if(response_schema)
-		{
-			const char *payload = jvalue_tostring(reply, response_schema);
-			LSError lserror;
-			LSErrorInit(&lserror);
-			if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror))
-			{
-				LSErrorPrint(&lserror, stderr);
-				LSErrorFree(&lserror);
-			}
-			jschema_release(&response_schema);
-		}
-		j_release(&reply);
 	}
 }
 
@@ -671,25 +682,7 @@ static void technology_property_changed_callback(gpointer data, const gchar *pro
 
 	if(g_str_equal(property,"Powered"))
 	{
-		jvalue_ref reply = jobject_create();
-		jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
-
-		send_connection_status(&reply);
-		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-		if(response_schema)
-		{
-			const char *payload = jvalue_tostring(reply, response_schema);
-//			g_message("Sending \n%s\n to subscribers",payload);
-			LSError lserror;
-
-			if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror))
-			{
-				LSErrorPrint(&lserror, stderr);
-				LSErrorFree(&lserror);
-			}
-			jschema_release(&response_schema);
-		}
-		j_release(&reply);
+		send_connection_status_to_subscribers();
 	}
 }
 
@@ -917,9 +910,6 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 		LSMessageReplySuccess(sh, message);
 		goto cleanup;
 	}
-
-	/* Scan the network for all available access points by making a connman call*/
-        connman_technology_scan_network(wifi_tech);
 
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
