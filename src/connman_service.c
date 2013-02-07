@@ -414,8 +414,7 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 		const gchar *key = g_variant_get_string(key_v, NULL);
 		if (g_str_equal(key, "Name"))
 			service->name =  g_variant_dup_string(val, NULL);
-
-		if (g_str_equal(key, "Type"))
+		else if (g_str_equal(key, "Type"))
 		{
 			const gchar *v = g_variant_get_string(val, NULL);
 
@@ -425,28 +424,22 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 			if (g_str_equal(v, "ethernet"))
 				service->type = CONNMAN_SERVICE_TYPE_ETHERNET;
 		}
-
-		if (g_str_equal(key, "State"))
+		else if (g_str_equal(key, "State"))
 		{
 			service->state =  g_variant_dup_string(val, NULL);
 			// Only a hidden service gets added as a new service with "association" state
 			if(g_str_equal(service->state, "association"))
 				service->hidden = TRUE;
 		}
-
-		if (g_str_equal(key, "Strength"))
+		else if (g_str_equal(key, "Strength"))
 			service->strength = g_variant_get_byte(val);
-
-		if(g_str_equal(key, "Security")) 
+		else if(g_str_equal(key, "Security"))
 			service->security = g_variant_dup_strv(val, NULL);
-
-		if (g_str_equal(key, "AutoConnect"))
+		else if (g_str_equal(key, "AutoConnect"))
 			service->auto_connect = g_variant_get_boolean(val);
-
-		if (g_str_equal(key, "Immutable"))
+		else if (g_str_equal(key, "Immutable"))
 			service->immutable = g_variant_get_boolean(val);
-
-		if (g_str_equal(key, "Favorite"))
+		else if (g_str_equal(key, "Favorite"))
 			service->favorite = g_variant_get_boolean(val);
 	}
 }
