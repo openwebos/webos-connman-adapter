@@ -783,11 +783,6 @@ connman_manager_t *connman_manager_new (void)
 		return NULL;
 	}
 
-	manager->wifi_services = NULL;
-	manager->wired_services = NULL;
-	manager->technologies = NULL;
-	manager->state = NULL;
-
 	manager->remote = connman_interface_manager_proxy_new_for_bus_sync(G_BUS_TYPE_SYSTEM,
 								G_DBUS_PROXY_FLAGS_NONE,
 								"net.connman", "/",
@@ -800,9 +795,7 @@ connman_manager_t *connman_manager_new (void)
 		g_free(manager);
 		return NULL;
 	}
-	
-	manager->handle_property_change_fn = manager->handle_services_change_fn = NULL;
-	
+
 	g_signal_connect(G_OBJECT(manager->remote), "property-changed",
 		   G_CALLBACK(property_changed_cb), manager);
 
