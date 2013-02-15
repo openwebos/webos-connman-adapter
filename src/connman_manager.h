@@ -48,6 +48,7 @@ typedef void (*connman_services_changed_cb)(gpointer);
 typedef struct connman_manager
 {
 	ConnmanInterfaceManager	*remote;
+	gchar   *state;
 	GSList	*wifi_services;
 	GSList	*wired_services;
 	GSList	*technologies;

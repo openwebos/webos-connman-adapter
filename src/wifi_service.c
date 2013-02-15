@@ -212,7 +212,7 @@ static void send_connection_status(jvalue_ref *reply)
 	}
 }
 
-static void send_connection_status_to_subscribers(void)
+static void send_connection_status_to_subscribers(const gchar *service_state)
 {
 	jvalue_ref reply = jobject_create();
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
@@ -234,6 +234,13 @@ static void send_connection_status_to_subscribers(void)
 		jschema_release(&response_schema);
 	}
 	j_release(&reply);
+
+	/* If the service state is different from manager state, send 'getstatus'
+	   method to com.palm.connectionmanager subscribers as well */
+	if(NULL != service_state && g_strcmp0(manager->state, service_state))
+	{
+		connectionmanager_send_status();
+	}
 }
 
 /**
@@ -259,10 +266,10 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 			break;
 		case  CONNMAN_SERVICE_STATE_READY:
 		case  CONNMAN_SERVICE_STATE_ONLINE:
-			send_connection_status_to_subscribers();
+			send_connection_status_to_subscribers(service->state);
 			break;
 		case CONNMAN_SERVICE_STATE_IDLE:
-			send_connection_status_to_subscribers();
+			send_connection_status_to_subscribers(service->state);
 			return;
 		default:
 			return;
@@ -682,7 +689,7 @@ static void technology_property_changed_callback(gpointer data, const gchar *pro
 
 	if(g_str_equal(property,"Powered"))
 	{
-		send_connection_status_to_subscribers();
+		send_connection_status_to_subscribers(NULL);
 	}
 }
 

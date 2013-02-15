@@ -504,23 +504,8 @@ gboolean connman_manager_is_manager_online (connman_manager_t *manager)
 	if(NULL == manager)
 		return FALSE;
 
-	GVariant *properties = connman_manager_get_properties(manager);
-	gsize i;
-
-	for (i = 0; i < g_variant_n_children(properties); i++)
-	{
-		GVariant *property = g_variant_get_child_value(properties, i);
-		GVariant *key_v = g_variant_get_child_value(property, 0);
-		const gchar *key = g_variant_get_string(key_v, NULL);
-		if (g_str_equal(key, "State"))
-		{
-			GVariant *v = g_variant_get_child_value(property, 1);
-			GVariant *va = g_variant_get_variant(v);
-			const gchar *state = g_variant_get_string(va, NULL);
-			if(g_str_equal(state, "online"))
-				return TRUE;
-		}
-	}
+	if(!g_strcmp0(manager->state, "online"))
+		return TRUE;
 
 	return FALSE;
 }
@@ -621,6 +606,11 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
 {
 	GVariant *va = g_variant_get_child_value(v, 0);
 	g_message("Manager property %s changed : %s",property, g_variant_get_string(va,NULL));
+	if(!g_strcmp0(property,"State"))
+	{
+		g_free(manager->state);
+		manager->state = g_strdup(g_variant_get_string(va, NULL));
+	}
 	if(NULL != manager->handle_property_change_fn)
 		(manager->handle_property_change_fn)((gpointer)manager, property, v);
 }
@@ -753,6 +743,34 @@ gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gcha
 }
 
 /**
+ * Update manager's state by making remote call for get_properties
+ */
+
+static void connman_manager_update_state(connman_manager_t *manager)
+{
+	if(NULL == manager)
+		return FALSE;
+
+	GVariant *properties = connman_manager_get_properties(manager);
+	gsize i;
+
+	for (i = 0; i < g_variant_n_children(properties); i++)
+	{
+		GVariant *property = g_variant_get_child_value(properties, i);
+		GVariant *key_v = g_variant_get_child_value(property, 0);
+		const gchar *key = g_variant_get_string(key_v, NULL);
+		if (!g_strcmp0(key, "State"))
+		{
+			GVariant *v = g_variant_get_child_value(property, 1);
+			GVariant *va = g_variant_get_variant(v);
+			manager->state = g_strdup(g_variant_get_string(va, NULL));
+		}
+	}
+
+	return FALSE;
+}
+
+/**
  * Initialize a new manager instance and update its services and technologies list
  * (see header for API details)
  */
@@ -770,6 +788,7 @@ connman_manager_t *connman_manager_new (void)
 	manager->wifi_services = NULL;
 	manager->wired_services = NULL;
 	manager->technologies = NULL;
+	manager->state = NULL;
 
 	manager->remote = connman_interface_manager_proxy_new_for_bus_sync(G_BUS_TYPE_SYSTEM,
 								G_DBUS_PROXY_FLAGS_NONE,
@@ -798,7 +817,7 @@ connman_manager_t *connman_manager_new (void)
 	g_signal_connect(G_OBJECT(manager->remote), "services-changed",
 		   G_CALLBACK(services_changed_cb), manager);
 
-
+	connman_manager_update_state(manager);
 	connman_manager_add_technologies(manager);
 	connman_manager_add_services(manager);
 
@@ -821,6 +840,7 @@ void connman_manager_free (connman_manager_t *manager)
 	connman_manager_free_services(manager);
 	connman_manager_free_technologies(manager);
 
+	g_free(manager->state);
 	g_free(manager);
 	manager = NULL;
 }
