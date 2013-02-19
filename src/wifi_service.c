@@ -679,17 +679,12 @@ static void technology_property_changed_callback(gpointer data, const gchar *pro
 	if(NULL == technology)
 		return;
 
-	if(connman_manager_find_wifi_technology(manager) != technology)
-	{
-		g_message("Ignoring signals for non-wifi technologies");
-		return;
-	}
 	/* Need to send getstatus method to all its subscribers whenever the "powered" state
 	   of WiFi technology changes */
-
 	if(g_str_equal(property,"Powered"))
 	{
 		send_connection_status_to_subscribers(NULL);
+		connectionmanager_send_status();
 	}
 }
 

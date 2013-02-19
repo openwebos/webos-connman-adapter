@@ -668,6 +668,30 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 }
 
 /**
+ *  @brief Callback function registered with connman technology whenever any of its properties change
+ *
+ *  @param data
+ *  @param property
+ *  @param value
+ */
+
+static void technology_property_changed_callback(gpointer data, const gchar *property, GVariant *value)
+{
+	connman_technology_t *technology = (connman_technology_t *)data;
+
+	if(NULL == technology)
+		return;
+
+	/* Need to send getstatus method to all com.palm.connectionmanager subscribers whenever the
+	   "powered" state of the technology changes */
+
+	if(g_str_equal(property,"Powered"))
+	{
+		connectionmanager_send_status();
+	}
+}
+
+/**
  * com.palm.connectionmanager service Luna Method Table
  */
 
@@ -723,6 +747,13 @@ int initialize_connectionmanager_ls2_calls( GMainLoop *mainloop )
 	{
 		g_error("LSGmainAttach() public returned error");
 		goto Exit;
+	}
+
+	/* Register for Wired technology's "PropertyChanged" signal (For wifi its being done in wifi_service.c*/
+	connman_technology_t *technology = connman_manager_find_ethernet_technology(manager);
+	if(technology)
+	{
+		connman_technology_register_property_changed_cb(technology, technology_property_changed_callback);
 	}
 
 	return 0;
