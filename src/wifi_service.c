@@ -415,7 +415,6 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 	g_variant_iter_init(&iter, fields);
 	while (g_variant_iter_next(&iter, "{sv}", &key, &value))
 	{
-		g_message("key : %s",key);
 		if (!strncmp(key, "Name", 10))
 		{
 			if(NULL != settings->ssid)
@@ -741,10 +740,14 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		}
 		else
 		{
-        		LSMessageReplyErrorBadJSON(sh, message);
-        		goto cleanup;
-		}		
+			goto invalid_params;
+		}
 	}
+	else
+	{
+		goto invalid_params;
+	}
+
 
 	/*
 	 *  Check if we are enabling an already enabled service, 
@@ -766,6 +769,8 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	
 	LSMessageReplySuccess(sh,message);
 
+invalid_params:
+	LSMessageReplyErrorInvalidParams(sh, message);
 cleanup:
 	j_release(&parsedObj);
 	return true;
@@ -849,6 +854,11 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 			goto cleanup;
 		}
 		ssid = g_strdup(profile->ssid);
+	}
+	else
+	{
+		LSMessageReplyErrorInvalidParams(sh, message);
+		goto cleanup;
 	}
 
 	service_req = luna_service_request_new(sh, message);
@@ -1151,6 +1161,11 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 		}
 		jnumber_get_i32(profileIdObj, &profile_id);
 	}
+	else
+	{
+		LSMessageReplyErrorInvalidParams(sh, message);
+		goto cleanup;
+	}
 
 	wifi_profile_t *profile = get_profile_by_id(profile_id);
 	if(NULL == profile)
@@ -1238,6 +1253,11 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 			goto cleanup;
 		}
 		jnumber_get_i32(profileIdObj, &profile_id);
+	}
+	else
+	{
+		LSMessageReplyErrorInvalidParams(sh, message);
+		goto cleanup;
 	}
 
 	wifi_profile_t *profile = get_profile_by_id(profile_id);

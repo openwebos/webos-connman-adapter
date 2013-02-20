@@ -299,31 +299,42 @@ static bool handle_set_ipv4_command(LSHandle *sh, LSMessage *message, void* cont
 	jvalue_ref ssidObj = {0}, methodObj = {0}, addressObj = {0}, netmaskObj = {0}, gatewayObj = {0};
 	ipv4info_t ipv4 = {0};
 	gchar *ssid = NULL;
+	gboolean invalidArg = TRUE;
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("method"), &methodObj))
 	{
 		raw_buffer method_buf = jstring_get(methodObj);
 		ipv4.method = g_strdup(method_buf.m_str);
+		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("address"), &addressObj))
 	{
 		raw_buffer address_buf = jstring_get(addressObj);
 		ipv4.address = g_strdup(address_buf.m_str);
+		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("netmask"), &netmaskObj))
 	{
 		raw_buffer netmask_buf = jstring_get(netmaskObj);
 		ipv4.netmask = g_strdup(netmask_buf.m_str);
+		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("gateway"), &gatewayObj))
 	{
 		raw_buffer gateway_buf = jstring_get(gatewayObj);
 		ipv4.gateway = g_strdup(gateway_buf.m_str);
+		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("ssid"), &ssidObj))
 	{
 		raw_buffer ssid_buf = jstring_get(ssidObj);
 		ssid = g_strdup(ssid_buf.m_str);
+		invalidArg = FALSE;
+	}
+	if(invalidArg == TRUE)
+	{
+		LSMessageReplyErrorInvalidParams(sh, message);
+		goto Exit;
 	}
 
 	connman_service_t *service = get_connman_service(ssid);
@@ -336,8 +347,9 @@ static bool handle_set_ipv4_command(LSHandle *sh, LSMessage *message, void* cont
 		goto Exit;
 	}
 	else
+	{
 		LSMessageReplyCustomError(sh, message, "Network not found");
-
+	}
 
 Exit:
 	g_free(ipv4.method);
@@ -397,6 +409,11 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 			raw_buffer dns_buf = jstring_get(jarray_get(dnsObj, i));
 			dns[i] = g_strdup(dns_buf.m_str);
 		}
+	}
+	else
+	{
+		LSMessageReplyErrorInvalidParams(sh, message);
+		goto Exit;
 	}
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("ssid"), &ssidObj))
@@ -504,8 +521,10 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		goto cleanup;
 	}
 
-	jvalue_ref wifiObj = {0};
-	gboolean enable_wifi = FALSE;
+	jvalue_ref wifiObj = {0}, wiredObj = {0};
+	gboolean enable_wifi = FALSE, enable_wired = FALSE;
+	gboolean invalidArg = TRUE;
+
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("wifi"), &wifiObj))
 	{
 		if (jstring_equal2(wifiObj, J_CSTR_TO_BUF("enabled")))
@@ -518,8 +537,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		}
 		else
 		{
-			LSMessageReplyErrorBadJSON(sh, message);
-			goto cleanup;
+			goto invalid_params;
 		}
 		/*
 		 *  Check if we are enabling an already enabled service,
@@ -534,10 +552,9 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		{
 			set_wifi_state(enable_wifi);
 		}
+		invalidArg = FALSE;
 	}
 
-	jvalue_ref wiredObj = {0};
-	gboolean enable_wired = FALSE;
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("wired"), &wiredObj))
 	{
 		if (jstring_equal2(wiredObj, J_CSTR_TO_BUF("enabled")))
@@ -550,8 +567,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		}
 		else
 		{
-			LSMessageReplyErrorBadJSON(sh, message);
-			goto cleanup;
+			goto invalid_params;
 		}
 		/*
 		 *  Check if we are enabling an already enabled service,
@@ -565,10 +581,17 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		{
 			set_ethernet_state(enable_wired);
 		}
+		invalidArg = FALSE;
+	}
+	if(invalidArg == TRUE)
+	{
+		goto invalid_params;
 	}
 
 	LSMessageReplySuccess(sh,message);
 
+invalid_params:
+	LSMessageReplyErrorInvalidParams(sh, message);
 cleanup:
 	j_release(&parsedObj);
 	return true;
