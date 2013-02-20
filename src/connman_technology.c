@@ -137,8 +137,6 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 		return NULL;
 	}
 
-	technology->handle_property_change_fn = NULL;
-
 	technology->sighandler_id = g_signal_connect_data(G_OBJECT(technology->remote), "property-changed",
                    G_CALLBACK(property_changed_cb), technology, NULL, 0);
 

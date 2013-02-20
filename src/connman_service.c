@@ -460,8 +460,6 @@ connman_service_t *connman_service_new(GVariant *variant)
 		return NULL;
 	}
 
-	service->path = service->name = service->state = NULL;
-	
 	GVariant *service_v = g_variant_get_child_value(variant, 0);
 	service->path = g_variant_dup_string(service_v, NULL);
 	
@@ -481,8 +479,6 @@ connman_service_t *connman_service_new(GVariant *variant)
 		g_free(service);
 		return NULL;
 	}
-
-	service->handle_state_change_fn = NULL;
 
 	service->sighandler_id = g_signal_connect_data(G_OBJECT(service->remote), "property-changed",
 		G_CALLBACK(property_changed_cb), service, NULL, 0);
