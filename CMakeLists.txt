@@ -63,6 +63,10 @@ pkg_check_modules(LUNAPREFS REQUIRED luna-prefs)
 include_directories(${LUNAPREFS_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${LUNAPREFS_CFLAGS_OTHER})
 
+pkg_check_modules(PMLOG REQUIRED PmLogLib)
+include_directories(${PMLOG_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${PMLOG_CFLAGS_OTHER})
+
 webos_add_compiler_flags(ALL -Wall -g)
 
 webos_add_linker_options(ALL --no-undefined)
@@ -89,9 +93,10 @@ target_link_libraries(webos-connman-adapter
                         ${GLIB2_LDFLAGS}
                         ${LUNASERVICE2_LDFLAGS}
                         ${GIO-UNIX_LDFLAGS}
-			${PBNJSON_C_LDFLAGS}
-			${OPENSSL_LDFLAGS}
-			${LUNAPREFS_LDFLAGS}
+                        ${PBNJSON_C_LDFLAGS}
+                        ${OPENSSL_LDFLAGS}
+                        ${LUNAPREFS_LDFLAGS}
+                        ${PMLOG_LDFLAGS}
                         rt
                         pthread)
 

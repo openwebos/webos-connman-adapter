@@ -25,6 +25,7 @@
  */
 
 #include "connman_technology.h"
+#include "logging.h"
 
 /**
  * Power on/off the given technology (see header for API details)
@@ -43,7 +44,7 @@ gboolean connman_technology_set_powered(connman_technology_t *technology, gboole
 						  NULL, &error);
 	if (error)
 	{
-		g_message("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -66,7 +67,7 @@ gboolean connman_technology_scan_network(connman_technology_t *technology)
 	connman_interface_technology_call_scan_sync(technology->remote, NULL, &error);
 	if (error)
 	{
-		g_message("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -112,7 +113,7 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 	connman_technology_t *technology = g_new0(connman_technology_t, 1);
 	if(technology == NULL)
 	{
-		g_error("Out of memory !!!");
+		WCA_LOG_FATAL("Out of memory !!!");
 		return NULL;
 	}
 
@@ -131,7 +132,7 @@ connman_technology_t *connman_technology_new(GVariant *variant)
 								&error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_FATAL("%s", error->message);
 		g_error_free(error);
 		g_free(technology);
 		return NULL;

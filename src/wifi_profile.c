@@ -27,6 +27,7 @@
 
 #include "wifi_profile.h"
 #include "wifi_setting.h"
+#include "logging.h"
 
 static GSList *wifi_profile_list = NULL;
 static guint gprofile_id = 777; //! First assigned profile ID
@@ -84,7 +85,7 @@ void create_new_profile(gchar *ssid, GStrv security, gboolean hidden)
 	wifi_profile_t *new_profile = g_new0(wifi_profile_t, 1);
 	if(NULL == new_profile)
 	{
-		g_error("Out of memory!");
+		WCA_LOG_FATAL("Out of memory!");
 		return;
 	}
 	new_profile->profile_id = gprofile_id++;

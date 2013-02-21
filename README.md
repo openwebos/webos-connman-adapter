@@ -25,6 +25,7 @@ Below are the tools and libraries (and their minimum versions) required to build
 * openwebos/luna-prefs 2.0.0
 * openwebos/luna-service2 3.0.0
 * openwebos/pbnjson_c 1.3.0
+* openwebos/PmLogLib 2.0.0
 * openwebos/openssl 1.0.0j
 * pkg-config 0.26
 

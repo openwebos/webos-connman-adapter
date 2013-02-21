@@ -31,6 +31,7 @@
 #include "wifi_setting.h"
 #include "wifi_service.h"
 #include "wifi_profile.h"
+#include "logging.h"
 
 /**
  * WiFi setting keys used to identify settings stored in luna-prefs database.
@@ -63,7 +64,7 @@ static char* wifi_setting_encrypt(const char *input_str, const char *key)
 
 	if (pBfKey == NULL)
 	{
-		g_error("Out of memory!");
+		WCA_LOG_FATAL("Out of memory!");
 		goto Exit;
 	}
 
@@ -79,7 +80,7 @@ static char* wifi_setting_encrypt(const char *input_str, const char *key)
 	output_str = g_new0(char, len + 1);
 	if (!output_str)
 	{
-		g_error("Out of memory!");
+		WCA_LOG_FATAL("Out of memory!");
 		goto Exit;
 	}
 
@@ -120,7 +121,7 @@ static char* wifi_setting_decrypt(const char *input_str, const char *key)
 
 	if (pBfKey == NULL)
 	{
-		g_error("Out of memory!");
+		WCA_LOG_FATAL("Out of memory!");
 		goto Exit;
 	}
 
@@ -138,7 +139,7 @@ static char* wifi_setting_decrypt(const char *input_str, const char *key)
 		output_str = g_new0(char, len + 1);
 		if (!output_str)
 		{
-			g_error("Out of memory!");
+			WCA_LOG_FATAL("Out of memory!");
 			goto Exit;
 		}
 
@@ -195,7 +196,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 			ret = TRUE;
 		}
 		else
-			g_message("ssid object not found");
+			WCA_LOG_DEBUG("ssid object not found");
 
 		if(NULL == get_profile_by_ssid(ssid))
 		{
@@ -247,7 +248,7 @@ gboolean load_wifi_setting(wifi_setting_type_t setting, void *data)
 	lpErr = LPAppGetHandle(WIFI_LUNA_PREFS_ID, &handle);
         if (lpErr)
         {
-		g_message("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
+		WCA_LOG_ERROR("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
 		goto Exit;
 	}
 
@@ -256,7 +257,7 @@ gboolean load_wifi_setting(wifi_setting_type_t setting, void *data)
 
 	if (lpErr)
         {
-		g_message("Error in executing LPAppCopyValue for %s",SettingKey[setting]);
+		WCA_LOG_ERROR("Error in executing LPAppCopyValue for %s",SettingKey[setting]);
 		goto Exit;
 	}
 
@@ -378,7 +379,7 @@ gboolean store_wifi_setting(wifi_setting_type_t setting, void *data)
 	lpErr = LPAppGetHandle(WIFI_LUNA_PREFS_ID, &handle);
         if (lpErr)
         {
-		g_message("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
+		WCA_LOG_ERROR("Error in getting LPAppHandle for %s",WIFI_LUNA_PREFS_ID);
 		return FALSE;
 	}
 
@@ -390,14 +391,14 @@ gboolean store_wifi_setting(wifi_setting_type_t setting, void *data)
 				char *profile_list_str = add_wifi_profile_list();
 				if(NULL == profile_list_str)
 				{
-					g_message("No wifi profiles found");
+					WCA_LOG_DEBUG("No wifi profiles found");
 					goto Exit;
 				}
 				lpErr = LPAppSetValue(handle, SettingKey[setting], profile_list_str);
 				g_free(profile_list_str);
 				if (lpErr)
 				{
-					g_message("Error in executing LPAppSetValue for %s",SettingKey[setting]);
+					WCA_LOG_ERROR("Error in executing LPAppSetValue for %s",SettingKey[setting]);
 					goto Exit;
 				}
 				ret = TRUE;

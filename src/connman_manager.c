@@ -25,6 +25,7 @@
  */
 
 #include "connman_manager.h"
+#include "logging.h"
 
 /**
  * Retrieve all the properties of the given manager instance
@@ -47,7 +48,7 @@ static GVariant *connman_manager_get_properties(connman_manager_t *manager)
 						 &ret, NULL, &error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return NULL;
 	}
@@ -253,13 +254,13 @@ static gboolean connman_manager_update_services(connman_manager_t *manager, GVar
 			if(NULL != service)
 			{		
 				GVariant *properties = g_variant_get_child_value(service_v, 1);
-				g_message("Updating service %s",service->name);
+				WCA_LOG_DEBUG("Updating service %s",service->name);
 				connman_service_update_properties(service, properties);
 			}
 			else
 			{
 				service = connman_service_new(service_v);
-				g_message("Adding service %s",service->name);
+				WCA_LOG_DEBUG("Adding service %s",service->name);
 				add_service_to_list(manager, service);
 			}
 			ret = TRUE;
@@ -292,7 +293,7 @@ static gboolean remove_services_from_list(GSList **service_list, gchar **service
 
 			if (g_str_equal(service->path, *services_removed_iter))
 			{
-				g_message("Removing service : %s",service->name);
+				WCA_LOG_DEBUG("Removing service : %s",service->name);
 				remove_list = g_slist_append(remove_list, service);
 				break;
     			}
@@ -399,7 +400,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 					       &services, NULL, &error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -414,7 +415,7 @@ static gboolean connman_manager_add_services(connman_manager_t *manager)
 			if(service_on_configured_iface(service_v))
 			{
 				service = connman_service_new(service_v);
-				g_message("Adding service %s",service->name);
+				WCA_LOG_DEBUG("Adding service %s",service->name);
 				add_service_to_list(manager, service);
 			}
 		}
@@ -444,7 +445,7 @@ static gboolean connman_manager_add_technologies (connman_manager_t *manager)
 					       &technologies, NULL, &error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -603,7 +604,7 @@ property_changed_cb(ConnmanInterfaceManager *proxy,const gchar * property, GVari
 	      connman_manager_t      *manager)
 {
 	GVariant *va = g_variant_get_child_value(v, 0);
-	g_message("Manager property %s changed : %s",property, g_variant_get_string(va,NULL));
+	WCA_LOG_DEBUG("Manager property %s changed : %s",property, g_variant_get_string(va,NULL));
 	if(!g_strcmp0(property,"State"))
 	{
 		g_free(manager->state);
@@ -622,13 +623,13 @@ static void
 technology_added_cb(ConnmanInterfaceManager *proxy, gchar * path, GVariant *v,
 	      connman_manager_t      *manager)
 {
-	g_message("Technology %s added", path);
+	WCA_LOG_DEBUG("Technology %s added", path);
 
 	if(NULL == find_technology_by_path(manager,path))
 	{
 		GVariant *technology_v = g_variant_new("(o@a{sv})",path, v);
 		connman_technology_t *technology = connman_technology_new(technology_v);
-		g_message("Updating manager's technology list");
+		WCA_LOG_DEBUG("Updating manager's technology list");
 		manager->technologies = g_slist_append(manager->technologies, technology);
 	}
 }
@@ -641,7 +642,7 @@ static void
 technology_removed_cb(ConnmanInterfaceManager *proxy, gchar * path,
 	      connman_manager_t      *manager)
 {
-	g_message("Technology removed");
+	WCA_LOG_DEBUG("Technology removed");
 	connman_technology_t *technology = find_technology_by_path(manager, path);
 	if(NULL != technology)
 	{
@@ -658,7 +659,7 @@ static void
 services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added, 
 		gchar **services_removed, connman_manager_t *manager)
 {
-	g_message("Services_changed ");
+	WCA_LOG_DEBUG("Services_changed ");
 	if(connman_manager_update_services(manager, services_added) ||
 		connman_manager_remove_old_services(manager, services_removed))
 	{
@@ -707,12 +708,12 @@ gboolean connman_manager_register_agent(connman_manager_t *manager, const gchar 
 	connman_interface_manager_call_register_agent_sync(manager->remote,
 		path, NULL, &error);
 	if (error) {
-		g_message("%s", error->message);
+		WCA_LOG_DEBUG("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
 
-	g_message("Registered agent successfully with connman");
+	WCA_LOG_DEBUG("Registered agent successfully with connman");
 
 	return TRUE;
 }
@@ -732,7 +733,7 @@ gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gcha
 	connman_interface_manager_call_unregister_agent_sync(manager->remote,
 		path, NULL, &error);
 	if (error) {
-		g_error("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -779,7 +780,7 @@ connman_manager_t *connman_manager_new (void)
 	connman_manager_t *manager = g_new0(connman_manager_t, 1);
 	if(manager == NULL)
 	{
-		g_error("Out of memory !!!");
+		WCA_LOG_FATAL("Out of memory !!!");
 		return NULL;
 	}
 
@@ -790,7 +791,7 @@ connman_manager_t *connman_manager_new (void)
 								&error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_FATAL("%s", error->message);
 		g_error_free(error);
 		g_free(manager);
 		return NULL;
@@ -812,9 +813,9 @@ connman_manager_t *connman_manager_new (void)
 	connman_manager_add_technologies(manager);
 	connman_manager_add_services(manager);
 
-	g_message("%d wifi services", g_slist_length(manager->wifi_services));
-	g_message("%d wired services", g_slist_length(manager->wired_services));
-	g_message("%d technologies", g_slist_length(manager->technologies));
+	WCA_LOG_INFO("%d wifi services", g_slist_length(manager->wifi_services));
+	WCA_LOG_INFO("%d wired services", g_slist_length(manager->wired_services));
+	WCA_LOG_INFO("%d technologies", g_slist_length(manager->technologies));
 
 	return manager;
 }

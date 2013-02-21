@@ -38,6 +38,7 @@
 #include "connman_manager.h"
 #include "connectionmanager_service.h"
 #include "lunaservice_utils.h"
+#include "logging.h"
 
 static LSHandle *pLsHandle, *pLsPublicHandle;
 
@@ -153,7 +154,7 @@ void connectionmanager_send_status(void)
 		const char *payload = jvalue_tostring(reply, response_schema);
 		LSError lserror;
 		LSErrorInit(&lserror);
-		g_message("Sending payload %s",payload);
+		WCA_LOG_INFO("Sending payload %s",payload);
 		if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror))
 		{
 			LSErrorPrint(&lserror, stderr);
@@ -546,7 +547,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 
 		if((enable_wifi && is_wifi_powered()) || (!enable_wifi && !is_wifi_powered()))
 		{
-			g_message("Wifi technology already enabled/disabled");
+			WCA_LOG_DEBUG("Wifi technology already enabled/disabled");
 		}
 		else
 		{
@@ -575,7 +576,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 		 */
 		if((enable_wired && is_ethernet_powered()) || (!enable_wired && !is_ethernet_powered()))
 		{
-			g_message("Wired technology already enabled/disabled");
+			WCA_LOG_DEBUG("Wired technology already enabled/disabled");
 		}
 		else
 		{
@@ -652,7 +653,7 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 		jobject_put(reply, J_CSTR_TO_JVAL("wifiInfo"), wifi_info);
 	}
 	else
-		g_message("Error in fetching mac address for wifi interface");
+		WCA_LOG_ERROR("Error in fetching mac address for wifi interface");
 
 
 	if(get_wifi_mac_address(CONNMAN_WIRED_INTERFACE_NAME, wired_mac_address) == 0)
@@ -662,7 +663,7 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 		jobject_put(reply, J_CSTR_TO_JVAL("wiredInfo"), wired_info);
 	}
 	else
-		g_message("Error in fetching mac address for wired interface");
+		WCA_LOG_ERROR("Error in fetching mac address for wired interface");
 
 	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
 	if(!response_schema)
@@ -744,31 +745,31 @@ int initialize_connectionmanager_ls2_calls( GMainLoop *mainloop )
 
 	if (LSRegisterPubPriv(CONNECTIONMANAGER_LUNA_SERVICE_NAME, &pLsHandle, false, &lserror) == false)
 	{
-		g_error("LSRegister() private returned error");
+		WCA_LOG_FATAL("LSRegister() private returned error");
 		goto Exit;
 	}
 
 	if (LSRegisterPubPriv(CONNECTIONMANAGER_LUNA_SERVICE_NAME, &pLsPublicHandle, true, &lserror) == false)
 	{
-		g_error("LSRegister() public returned error");
+		WCA_LOG_FATAL("LSRegister() public returned error");
 		goto Exit;
 	}
 
 	if (LSRegisterCategory(pLsHandle, NULL, connectionmanager_methods, NULL, NULL, &lserror) == false)
 	{
-		g_error("LSRegisterCategory() returned error");
+		WCA_LOG_FATAL("LSRegisterCategory() returned error");
 		goto Exit;
 	}
 
 	if (LSGmainAttach(pLsHandle, mainloop, &lserror) == false)
 	{
-		g_error("LSGmainAttach() private returned error");
+		WCA_LOG_FATAL("LSGmainAttach() private returned error");
 		goto Exit;
 	}
 
 	if (LSGmainAttach(pLsPublicHandle, mainloop, &lserror) == false)
 	{
-		g_error("LSGmainAttach() public returned error");
+		WCA_LOG_FATAL("LSGmainAttach() public returned error");
 		goto Exit;
 	}
 

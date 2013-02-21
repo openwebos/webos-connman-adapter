@@ -32,9 +32,18 @@
 #include <stdlib.h>
 #include <luna-service2/lunaservice.h>
 
+#include "logging.h"
+
 static GMainLoop *mainloop = NULL;
 
 int initialize_wifi_ls2_calls();
+
+/**
+ * Our PmLogLib logging context
+ */
+PmLogContext gLogContext;
+
+static const char* const kLogContextName = "webos-connman-adapter";
 
 void
 term_handler(int signal)
@@ -51,16 +60,20 @@ main(int argc, char **argv)
 
     mainloop = g_main_loop_new(NULL, FALSE);
 
+    (void)PmLogGetContext(kLogContextName, &gLogContext);
+
+    WCA_LOG_INFO("Starting webos-connman-adapter");
+
     if(initialize_wifi_ls2_calls(mainloop) < 0)
     {
-	g_error("Error in initializing com.palm.wifi service");
-	return -1; 
+        WCA_LOG_FATAL("Error in initializing com.palm.wifi service");
+        return -1;
     }  
 
     if(initialize_connectionmanager_ls2_calls(mainloop) < 0)
     {
-	g_error("Error in initializing com.palm.connectionmanager service");
-	return -1;
+        WCA_LOG_FATAL("Error in initializing com.palm.connectionmanager service");
+        return -1;
     }
 
     g_main_loop_run(mainloop);

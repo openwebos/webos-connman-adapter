@@ -25,6 +25,7 @@
 
 #include "connman_service.h"
 #include "utils.h"
+#include "logging.h"
 
 /**
  * Check if the type of the service is wifi (see header for API details)
@@ -120,7 +121,7 @@ static void connect_callback(GDBusConnection *connection, GAsyncResult *res, gpo
 	ret = connman_interface_service_call_connect_finish(service->remote, res, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		/* If the error is "AlreadyConnected" its not an error */
 		if (NULL != g_strrstr(error->message,"AlreadyConnected"))
 			ret = TRUE;
@@ -164,7 +165,7 @@ gboolean connman_service_disconnect(connman_service_t *service)
 	connman_interface_service_call_disconnect_sync(service->remote, NULL, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -199,7 +200,7 @@ gboolean connman_service_set_ipv4(connman_service_t *service, ipv4info_t *ipv4)
 	connman_interface_service_call_set_property_sync(service->remote, "IPv4.Configuration", g_variant_new_variant(ipv4_v), NULL, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -221,7 +222,7 @@ gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
 			g_variant_new_variant(g_variant_new_strv(dns, g_strv_length(dns))), NULL, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -245,7 +246,7 @@ gboolean connman_service_set_autoconnect(connman_service_t *service, gboolean va
 						  NULL, &error);
 	if (error)
 	{
-		g_message("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -270,7 +271,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 	connman_interface_service_call_get_properties_sync(service->remote, &properties, NULL, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		g_error_free(error);
 		return FALSE;
 	}
@@ -387,7 +388,7 @@ GVariant *connman_service_fetch_properties(connman_service_t *service)
 	connman_interface_service_call_get_properties_sync(service->remote, &properties, NULL, &error);
 	if (error)
 	{
-		g_message("Error: %s", error->message);
+		WCA_LOG_CRITICAL("Error: %s", error->message);
 		g_error_free(error);
 		return NULL;
 	}
@@ -456,7 +457,7 @@ connman_service_t *connman_service_new(GVariant *variant)
 	connman_service_t *service = g_new0(connman_service_t, 1);
 	if(service == NULL)
 	{
-		g_error("Out of memory !!!");
+		WCA_LOG_FATAL("Out of memory !!!");
 		return NULL;
 	}
 
@@ -474,7 +475,7 @@ connman_service_t *connman_service_new(GVariant *variant)
 								&error);
 	if (error)
 	{
-		g_error("%s", error->message);
+		WCA_LOG_CRITICAL("%s", error->message);
 		g_error_free(error);
 		g_free(service);
 		return NULL;

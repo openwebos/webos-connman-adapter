@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "connman_agent.h"
+#include "logging.h"
 
 #define AGENT_DBUS_PATH			"/"
 #define AGENT_ERROR_CANCELED	"net.connman.Agent.Error.Canceled"
@@ -98,7 +99,7 @@ static void bus_acquired_cb(GDBusConnection *connection, const gchar *name, gpoi
 	if (!g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(agent->interface), connection,
 										  agent->path, &error))
 	{
-		g_error("Could not export agent object: %s", error->message);
+		WCA_LOG_CRITICAL("Could not export agent object: %s", error->message);
 		g_error_free(error);
 	}
 
@@ -106,7 +107,7 @@ static void bus_acquired_cb(GDBusConnection *connection, const gchar *name, gpoi
 		agent->registered_cb(agent->registered_data);
 	}
 
-	g_message("Agent successfully exported");
+	WCA_LOG_DEBUG("Agent successfully exported");
 }
 
 connman_agent_t* connman_agent_new(void)
@@ -116,7 +117,7 @@ connman_agent_t* connman_agent_new(void)
 	agent = g_new0(connman_agent_t, 1);
 	if (agent == NULL)
 	{
-		g_error("Out of memory !!!");
+		WCA_LOG_FATAL("Out of memory !!!");
 		return NULL;
 	}
 

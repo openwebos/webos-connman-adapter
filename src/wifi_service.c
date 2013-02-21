@@ -45,6 +45,7 @@
 #include "lunaservice_utils.h"
 #include "common.h"
 #include "connectionmanager_service.h"
+#include "logging.h"
 
 typedef struct connection_settings {
 	char *passkey;
@@ -223,7 +224,7 @@ static void send_connection_status_to_subscribers(const gchar *service_state)
 	if(response_schema)
 	{
 		const char *payload = jvalue_tostring(reply, response_schema);
-		g_message("Sending payload : %s",payload);
+		WCA_LOG_DEBUG("Sending payload : %s",payload);
 		LSError lserror;
 		LSErrorInit(&lserror);
 		if (!LSSubscriptionPost(pLsHandle, "/", "getstatus", payload, &lserror))
@@ -257,7 +258,7 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 	connman_service_t *service = (connman_service_t *)data;
 	if(NULL == service)
 		return;
-	g_message("Service %s state changed to %s",service->name, new_state);
+	WCA_LOG_DEBUG("Service %s state changed to %s",service->name, new_state);
 
 	int service_state = connman_service_get_state(service->state);
 	switch(service_state)
@@ -523,9 +524,9 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 		if(found_service || ((NULL != service->name) && g_str_equal(service->name, ssid)))
 		{
 			if(NULL == service->name)
-				g_message("Connecting to hidden service");
+				WCA_LOG_INFO("Connecting to hidden service");
 			else
-				g_message("Connecting to ssid %s",service->name);
+				WCA_LOG_INFO("Connecting to ssid %s",service->name);
 
 			found_service = TRUE;
 
@@ -538,7 +539,7 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 				else {
 					/* Already connected so connection was successful */
 					LSMessageReplySuccess(service_req->handle, service_req->message);
-					g_message("Already connected with network");
+					WCA_LOG_DEBUG("Already connected with network");
 					goto cleanup;
 				}
 			}
@@ -591,7 +592,7 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 			goto cleanup;
 		}
 
-		g_message("Setup for connecting with secured network");
+		WCA_LOG_DEBUG("Setup for connecting with secured network");
 		connman_agent_set_request_input_callback(agent, agent_request_input_callback, settings);
 	}
 
@@ -1310,7 +1311,7 @@ static void agent_registered_callback(gpointer user_data)
 
 	agent_path = connman_agent_get_path(agent);
 	if (!connman_manager_register_agent(manager, agent_path)) {
-		g_message("Could not register our agent instance with connman; functionality will be limited!");
+		WCA_LOG_CRITICAL("Could not register our agent instance with connman; functionality will be limited!");
 	}
 }
 
@@ -1347,31 +1348,31 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 
 	if (LSRegisterPubPriv(WIFI_LUNA_SERVICE_NAME, &pLsHandle, false, &lserror) == false)
 	{
-		g_error("LSRegister() private returned error");
+		WCA_LOG_FATAL("LSRegister() private returned error");
 		goto Exit;
 	}
 
 	if (LSRegisterPubPriv(WIFI_LUNA_SERVICE_NAME, &pLsPublicHandle, true, &lserror) == false)
 	{
-		g_error("LSRegister() public returned error");
+		WCA_LOG_FATAL("LSRegister() public returned error");
 		goto Exit;
 	}
 
 	if (LSRegisterCategory(pLsHandle, NULL, wifi_methods, NULL, NULL, &lserror) == false)
 	{
-		g_error("LSRegisterCategory() returned error");
+		WCA_LOG_FATAL("LSRegisterCategory() returned error");
 		goto Exit;
 	}
 
 	if (LSGmainAttach(pLsHandle, mainloop, &lserror) == false)
 	{
-		g_error("LSGmainAttach() private returned error");
+		WCA_LOG_FATAL("LSGmainAttach() private returned error");
 		goto Exit;
 	}
 
 	if (LSGmainAttach(pLsPublicHandle, mainloop, &lserror) == false)
 	{
-		g_error("LSGmainAttach() public returned error");
+		WCA_LOG_FATAL("LSGmainAttach() public returned error");
 		goto Exit;
 	}
 
