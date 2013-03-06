@@ -722,7 +722,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	if (jis_null(parsedObj))
 	{
         	LSMessageReplyErrorBadJSON(sh, message);
-        	goto cleanup;
+        	return true;
     	}
 
 
@@ -827,7 +827,7 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
         if (jis_null(parsedObj))
 	{
                 LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
+                return true;
         }
 
         jvalue_ref ssidObj = {0};
@@ -1131,10 +1131,6 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
 		return true;
 
 	jvalue_ref parsedObj = {0};
-	jvalue_ref reply = jobject_create();
-	int profile_id = 0;
-	LSError lserror;
-	LSErrorInit(&lserror);
 
         jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
         if(!input_schema)
@@ -1148,10 +1144,14 @@ static bool handle_get_profile_command(LSHandle *sh, LSMessage *message, void* c
         if (jis_null(parsedObj))
 	{
                 LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
+                return true;
         }
 
         jvalue_ref profileIdObj = {0};
+	jvalue_ref reply = jobject_create();
+	int profile_id = 0;
+	LSError lserror;
+	LSErrorInit(&lserror);
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
 	{
@@ -1224,10 +1224,6 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 		return true;
 
 	jvalue_ref parsedObj = {0};
-	jvalue_ref reply = jobject_create();
-	int profile_id = 0;
-	LSError lserror;
-	LSErrorInit(&lserror);
 
         jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
         if(!input_schema)
@@ -1241,10 +1237,14 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
         if (jis_null(parsedObj))
 	{
                 LSMessageReplyErrorBadJSON(sh, message);
-                goto cleanup;
+                return true;
         }
 
         jvalue_ref profileIdObj = {0};
+	jvalue_ref reply = jobject_create();
+	int profile_id = 0;
+	LSError lserror;
+	LSErrorInit(&lserror);
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
 	{

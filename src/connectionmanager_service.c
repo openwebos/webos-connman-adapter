@@ -294,7 +294,7 @@ static bool handle_set_ipv4_command(LSHandle *sh, LSMessage *message, void* cont
 	if (jis_null(parsedObj))
 	{
 		LSMessageReplyErrorBadJSON(sh, message);
-		goto Exit;
+		return true;
 	}
 
 	jvalue_ref ssidObj = {0}, methodObj = {0}, addressObj = {0}, netmaskObj = {0}, gatewayObj = {0};
@@ -384,7 +384,7 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 	jvalue_ref parsedObj = {0};
 	jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
 	if(!input_schema)
-	return false;
+		return false;
 
 	JSchemaInfo schemaInfo;
 	jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
@@ -394,12 +394,12 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 	if (jis_null(parsedObj))
 	{
 		LSMessageReplyErrorBadJSON(sh, message);
-		goto Exit;
+		return true;
 	}
 
 	jvalue_ref ssidObj = {0}, dnsObj = {0};
 	GStrv dns;
-	gchar *ssid;
+	gchar *ssid = NULL;
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("dns"), &dnsObj))
 	{
@@ -519,7 +519,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	if (jis_null(parsedObj))
 	{
 		LSMessageReplyErrorBadJSON(sh, message);
-		goto cleanup;
+		return true;
 	}
 
 	jvalue_ref wifiObj = {0}, wiredObj = {0};
@@ -593,7 +593,6 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 
 invalid_params:
 	LSMessageReplyErrorInvalidParams(sh, message);
-cleanup:
 	j_release(&parsedObj);
 	return true;
 
@@ -680,7 +679,7 @@ static bool handle_get_info_command(LSHandle *sh, LSMessage *message, void* cont
 
 	jschema_release(&response_schema);
 
-	cleanup:
+cleanup:
 	if (LSErrorIsSet(&lserror))
 	{
 		LSErrorPrint(&lserror, stderr);
