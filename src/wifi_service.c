@@ -47,6 +47,10 @@
 #include "connectionmanager_service.h"
 #include "logging.h"
 
+/* Range for converting signal strength to signal bars */
+#define MID_SIGNAL_RANGE_LOW	34
+#define MID_SIGNAL_RANGE_HIGH	50
+
 typedef struct connection_settings {
 	char *passkey;
 	char *ssid;
@@ -58,9 +62,6 @@ static LSHandle *pLsHandle, *pLsPublicHandle;
 
 connman_manager_t *manager = NULL;
 static connman_agent_t *agent = NULL;
-
-/* Constant for mapping access point signal strength to signal levels (1 to 3) */
-#define MAX_SIGNAL_BARS         3
 
 static connection_settings_t* connection_settings_new(void)
 {
@@ -123,6 +124,25 @@ static gboolean wifi_technology_status_check(LSHandle *sh, LSMessage *message)
 }
 
 /**
+ * Convert signal strength to signal bars
+ *
+ * @param[IN] strength Signal strength
+ *
+ * @return Mapped signal strength in bars
+ */
+
+static int signal_strength_to_bars(int strength)
+{
+	if(strength > 0 && strength < MID_SIGNAL_RANGE_LOW)
+		return 1;
+	else if(strength >= MID_SIGNAL_RANGE_LOW && strength < MID_SIGNAL_RANGE_HIGH)
+		return 2;
+	else if(strength >= MID_SIGNAL_RANGE_HIGH)
+		return 3;
+	return 0;
+}
+
+/**
  *  @brief Add details about the connected service
  * 
  *  @param reply
@@ -156,7 +176,7 @@ static void add_connected_network_status(jvalue_ref *reply, connman_service_t *c
 		jobject_put(network_info, J_CSTR_TO_JVAL("connectState"), jstring_create(connman_service_get_webos_state(connman_state)));
 	}
 
-	jobject_put(network_info, J_CSTR_TO_JVAL("signalBars"), jnumber_create_i32((connected_service->strength * MAX_SIGNAL_BARS) / 100)); 
+	jobject_put(network_info, J_CSTR_TO_JVAL("signalBars"), jnumber_create_i32(signal_strength_to_bars(connected_service->strength))); 
 	jobject_put(network_info, J_CSTR_TO_JVAL("signalLevel"), jnumber_create_i32(connected_service->strength)); 
 	
 	jobject_put(*reply,  J_CSTR_TO_JVAL("networkInfo"), network_info);
@@ -336,9 +356,7 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 		jobject_put(*network, J_CSTR_TO_JVAL("availableSecurityTypes"),security_list);
 	}
 
-	int signalbars = (service->strength * MAX_SIGNAL_BARS) / 100;
-
-	jobject_put(*network, J_CSTR_TO_JVAL("signalBars"),jnumber_create_i32(signalbars));
+	jobject_put(*network, J_CSTR_TO_JVAL("signalBars"),jnumber_create_i32(signal_strength_to_bars(service->strength)));
 	jobject_put(*network, J_CSTR_TO_JVAL("signalLevel"),jnumber_create_i32(service->strength));
 	jobject_put(*network, J_CSTR_TO_JVAL("supported"),jboolean_create(supported));
 
