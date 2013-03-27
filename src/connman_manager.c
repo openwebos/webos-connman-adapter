@@ -472,8 +472,13 @@ gboolean connman_manager_is_manager_available (connman_manager_t *manager)
 	if(NULL == manager)
 		return FALSE;
 	
-	GVariant *properties = connman_manager_get_properties(manager);
 	gsize i;
+	GVariant *properties = connman_manager_get_properties(manager);
+	if(NULL == properties)
+	{
+		WCA_LOG_FATAL("Connman manager unavailable !!!");
+		return FALSE;
+	}
 
 	for (i = 0; i < g_variant_n_children(properties); i++)
 	{
@@ -750,8 +755,13 @@ static void connman_manager_update_state(connman_manager_t *manager)
 	if(NULL == manager)
 		return FALSE;
 
-	GVariant *properties = connman_manager_get_properties(manager);
 	gsize i;
+	GVariant *properties = connman_manager_get_properties(manager);
+	if(NULL == properties)
+	{
+		WCA_LOG_FATAL("Connman manager unavailable !!!");
+		return FALSE;
+	}
 
 	for (i = 0; i < g_variant_n_children(properties); i++)
 	{
