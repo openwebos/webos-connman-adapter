@@ -212,11 +212,11 @@ static gint compare_signal_strength(connman_service_t *service1, connman_service
  * @param[IN] service A service instance
  */
 
-static add_service_to_list(connman_manager_t *manager, connman_service_t *service)
+static void add_service_to_list(connman_manager_t *manager, connman_service_t *service)
 {
 	if(connman_service_type_wifi(service))
 	{
-		manager->wifi_services = g_slist_insert_sorted(manager->wifi_services, service, compare_signal_strength);
+		manager->wifi_services = g_slist_insert_sorted(manager->wifi_services, service, (GCompareFunc) compare_signal_strength);
 	}
 	else if(connman_service_type_ethernet(service))
 	{
@@ -299,7 +299,7 @@ static gboolean remove_services_from_list(GSList **service_list, gchar **service
     			}
 		}
 
-		*services_removed_iter++;
+		*services_removed_iter = *services_removed_iter + 1;
 	}
 
 	/* 
@@ -753,14 +753,14 @@ gboolean connman_manager_unregister_agent(connman_manager_t *manager, const gcha
 static void connman_manager_update_state(connman_manager_t *manager)
 {
 	if(NULL == manager)
-		return FALSE;
+		return;
 
 	gsize i;
 	GVariant *properties = connman_manager_get_properties(manager);
 	if(NULL == properties)
 	{
 		WCA_LOG_FATAL("Connman manager unavailable !!!");
-		return FALSE;
+		return;
 	}
 
 	for (i = 0; i < g_variant_n_children(properties); i++)
@@ -775,8 +775,6 @@ static void connman_manager_update_state(connman_manager_t *manager)
 			manager->state = g_strdup(g_variant_get_string(va, NULL));
 		}
 	}
-
-	return FALSE;
 }
 
 /**

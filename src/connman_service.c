@@ -145,7 +145,7 @@ gboolean connman_service_connect(connman_service_t *service, connman_service_con
 
 	cbd = cb_data_new(cb, user_data);
 	cbd->user = service;
-	connman_interface_service_call_connect(service->remote, NULL, connect_callback, cbd);
+	connman_interface_service_call_connect(service->remote, NULL, (GAsyncReadyCallback) connect_callback, cbd);
 
 	return TRUE;
 }
@@ -219,7 +219,7 @@ gboolean connman_service_set_nameservers(connman_service_t *service, GStrv dns)
 	GError *error = NULL;
 
 	connman_interface_service_call_set_property_sync(service->remote, "Nameservers.Configuration",
-			g_variant_new_variant(g_variant_new_strv(dns, g_strv_length(dns))), NULL, &error);
+			g_variant_new_variant(g_variant_new_strv((const gchar * const*)dns, g_strv_length(dns))), NULL, &error);
 	if (error)
 	{
 		WCA_LOG_CRITICAL("Error: %s", error->message);
@@ -383,7 +383,6 @@ GVariant *connman_service_fetch_properties(connman_service_t *service)
 {
 	GError *error = NULL;
 	GVariant *properties;
-	gsize i;
 
 	connman_interface_service_call_get_properties_sync(service->remote, &properties, NULL, &error);
 	if (error)

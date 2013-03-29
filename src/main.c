@@ -33,6 +33,8 @@
 #include <luna-service2/lunaservice.h>
 
 #include "logging.h"
+#include "wifi_service.h"
+#include "connectionmanager_service.h"
 
 static GMainLoop *mainloop = NULL;
 

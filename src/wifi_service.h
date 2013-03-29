@@ -41,4 +41,6 @@
 #define LUNA_METHOD_GETSTATUS               "getstatus"
 #define LUNA_METHOD_SETSTATE                "setstate"
 
+extern int initialize_wifi_ls2_calls(GMainLoop *mainloop);
+
 #endif /* _WIFI_SERVICE_H_ */

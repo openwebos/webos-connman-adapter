@@ -398,13 +398,13 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 	}
 
 	jvalue_ref ssidObj = {0}, dnsObj = {0};
-	GStrv dns;
+	GStrv dns = NULL;
 	gchar *ssid = NULL;
 
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("dns"), &dnsObj))
 	{
 		int i, dns_arrsize = jarray_size(dnsObj);
-		dns = g_new0(GStrv, 1);
+		dns = (GStrv) g_new0(GStrv, 1);
 		for(i = 0; i < dns_arrsize; i++)
 		{
 			raw_buffer dns_buf = jstring_get(jarray_get(dnsObj, i));

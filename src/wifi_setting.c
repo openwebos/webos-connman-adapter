@@ -188,7 +188,6 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 
 		gchar *ssid = NULL;
 		GStrv security = NULL;
-		gboolean hidden = FALSE;
 		if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("ssid"), &ssidObj))
 		{
 			raw_buffer ssid_buf = jstring_get(ssidObj);
@@ -200,10 +199,11 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 
 		if(NULL == get_profile_by_ssid(ssid))
 		{
+			bool hidden = false;
 			if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("security"), &securityListObj))
 			{
 				ssize_t i, num_elems = jarray_size(securityListObj);
-				security = g_new0(GStrv, 1);
+				security = (GStrv) g_new0(GStrv, 1);
 				for(i = 0; i < num_elems; i++)
 				{
 					jvalue_ref securityObj = jarray_get(securityListObj, i);
@@ -215,8 +215,8 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 			{
 				jboolean_get(hiddenObj, &hidden);
 			}
-
-			create_new_profile(ssid, security, hidden);
+			// Converting bool to gboolean as create_new_profile expects gboolean
+			create_new_profile(ssid, security, hidden?TRUE:FALSE);
 			g_strfreev(security);
 		}
 
@@ -266,7 +266,6 @@ gboolean load_wifi_setting(wifi_setting_type_t setting, void *data)
 	{
 		case WIFI_PROFILELIST_SETTING:
 		{
-			gboolean ret = FALSE;
 			jvalue_ref parsedObj = {0};
 			jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
 			if(!input_schema)
@@ -347,7 +346,7 @@ static gchar *add_wifi_profile_list(void)
 			jvalue_ref profileinfo_j = jobject_create();
 			jvalue_ref profile_j = jobject_create();
 			add_wifi_profile(&profile_j, profile);
-			gchar *profile_str = jvalue_tostring(profile_j, response_schema);
+			const gchar *profile_str = jvalue_tostring(profile_j, response_schema);
 			gchar *enc_profile_str = wifi_setting_encrypt(profile_str, WIFI_LUNA_PREFS_ID);
 			jobject_put(profileinfo_j, J_CSTR_TO_JVAL("wifiProfile"), jstring_create(enc_profile_str));
 			jarray_append(profilelist_arr_j, profileinfo_j);

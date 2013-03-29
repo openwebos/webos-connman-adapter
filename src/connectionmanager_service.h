@@ -39,5 +39,6 @@
 #define LUNA_METHOD_GETINFO		"getinfo"
 
 extern void connectionmanager_send_status(void);
+extern int initialize_connectionmanager_ls2_calls(GMainLoop *mainloop);
 
 #endif /* _CONNECTIONMANAGER_SERVICE_H_ */

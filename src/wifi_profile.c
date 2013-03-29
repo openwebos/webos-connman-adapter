@@ -94,7 +94,7 @@ void create_new_profile(gchar *ssid, GStrv security, gboolean hidden)
 	if(NULL != security)
 	{
 		gsize i;
-		new_profile->security = g_new0(GStrv, 1);
+		new_profile->security = (GStrv) g_new0(GStrv, 1);
 		for (i = 0; i < g_strv_length(security); i++)
 		{
 			new_profile->security[i] = g_strdup(security[i]);

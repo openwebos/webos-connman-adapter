@@ -54,7 +54,7 @@
 typedef struct connection_settings {
 	char *passkey;
 	char *ssid;
-	gboolean wpsmode;
+	bool wpsmode;
 	char *wpspin;
 } connection_settings_t;
 
@@ -308,7 +308,6 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 	else
 	{
 		/* Else, create a new profile */
-		gchar *security = NULL;
 		if(NULL != service->security && !g_str_equal(service->security[0], "none"))
 			create_new_profile(service->name, service->security, service->hidden);
 		else
@@ -382,7 +381,7 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 static bool populate_wifi_networks(jvalue_ref *reply)
 {
 	if(NULL == reply)
-		return;
+		return false;
 
         bool networks_found = false;
 
@@ -429,7 +428,7 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 		connection_settings_free(settings);
 		return NULL;
 	}
-	vabuilder = g_variant_builder_new("a{sv}");
+	vabuilder = g_variant_builder_new((const GVariantType *)"a{sv}");
 
 	g_variant_iter_init(&iter, fields);
 	while (g_variant_iter_next(&iter, "{sv}", &key, &value))
@@ -454,7 +453,7 @@ static GVariant* agent_request_input_callback(GVariant *fields, gpointer data)
 		}
 		else if (!strncmp(key, "WPS", 10))
 		{
-			if(settings->wpsmode == TRUE)
+			if(settings->wpsmode)
 			{
 				if(settings->wpspin != NULL)
 				{
@@ -506,12 +505,13 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 
 	raw_buffer passkey_buf, wpspin_buf;
 	GSList *ap;
-	gboolean found_service = FALSE, hidden = FALSE, psk_security = FALSE;
+	gboolean found_service = FALSE, psk_security = FALSE;
 	connection_settings_t *settings = NULL;
 	connman_service_t *service = NULL;
+	bool hidden = false;
 
 	if (NULL == ssid)
-		return false;
+		return;
 
 	if (jobject_get_exists(req_object, J_CSTR_TO_BUF("wasCreatedWithJoinOther"), &hidden_obj))
 	{
@@ -1074,7 +1074,7 @@ static void add_wifi_profile_list(jvalue_ref *reply)
 	wifi_profile_t *profile = NULL;
 	while(NULL != (profile = get_next_profile(profile)))
 	{
-		jvalue_ref *profile_j = jobject_create();
+		jvalue_ref profile_j = jobject_create();
 		add_wifi_profile(&profile_j, profile);
 		jarray_append(profile_list_j, profile_j);
 	}
@@ -1259,7 +1259,6 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
         }
 
         jvalue_ref profileIdObj = {0};
-	jvalue_ref reply = jobject_create();
 	int profile_id = 0;
 	LSError lserror;
 	LSErrorInit(&lserror);
@@ -1359,7 +1358,6 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 	LSErrorInit (&lserror);
 	pLsHandle       = NULL;
 	pLsPublicHandle = NULL;
-	gchar *agent_path = NULL;
 
 	if(NULL == mainloop)
 		goto Exit;
