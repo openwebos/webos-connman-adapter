@@ -18,7 +18,7 @@
 
 # -*- mode: conf; -*-
 
-start on stopped connman
+start on started connman
 
 respawn
 exec @WEBOS_INSTALL_SBINDIR@/webos-connman-adapter
