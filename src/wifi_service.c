@@ -1332,6 +1332,45 @@ static void agent_registered_callback(gpointer user_data)
 	}
 }
 
+
+static void connman_service_stopped(GDBusConnection *conn, const gchar *name, const gchar *name_owner, gpointer user_data)
+{
+	if(agent != NULL) connman_agent_free(agent), agent = NULL;
+	if(manager != NULL) connman_manager_free(manager), manager = NULL;
+}
+
+static void connman_service_started(GDBusConnection *conn, const gchar *name, const gchar *name_owner, gpointer user_data)
+{
+	/* We just need one manager instance that stays throughout the lifetime
+           of this daemon. Only its technologies and services lists are updated
+	   whenever the corresponding signals are received */
+	manager = connman_manager_new();
+	if(NULL == manager)
+		return;
+
+	agent = connman_agent_new();
+	if (NULL == agent)
+	{
+		connman_manager_free(manager);
+		manager = NULL;
+		return;
+	}
+
+	connman_agent_set_registered_callback(agent, agent_registered_callback, NULL);
+
+	/* Register for manager's "PropertyChanged" and "ServicesChanged" signals for sending 'getstatus' and 'findnetworks'
+	   methods to their subscribers */
+	connman_manager_register_property_changed_cb(manager, manager_property_changed_callback);
+	connman_manager_register_services_changed_cb(manager, manager_services_changed_callback);
+
+	/* Register for WiFi technology's "PropertyChanged" signal*/
+	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
+	if(technology)
+	{
+		connman_technology_register_property_changed_cb(technology, technology_property_changed_callback);
+	}
+}
+
 /**
  * com.palm.wifi service Luna Method Table
  */
@@ -1394,32 +1433,7 @@ int initialize_wifi_ls2_calls( GMainLoop *mainloop )
 
 	g_type_init();
 
-	/* We just need one manager instance that stays throughout the lifetime 	   
-           of this daemon. Only its technologies and services lists are updated
-	   whenever the corresponding signals are received */
-	manager = connman_manager_new();
-	if(NULL == manager)
-	{
-		goto Exit;
-	}       
-
-	agent = connman_agent_new();
-	if (NULL == agent)
-		goto Exit;
-
-	connman_agent_set_registered_callback(agent, agent_registered_callback, NULL);
-
-	/* Register for manager's "PropertyChanged" and "ServicesChanged" signals for sending 'getstatus' and 'findnetworks'
-	   methods to their subscribers */
-	connman_manager_register_property_changed_cb(manager, manager_property_changed_callback);
-	connman_manager_register_services_changed_cb(manager, manager_services_changed_callback);
-
-	/* Register for WiFi technology's "PropertyChanged" signal*/
-	connman_technology_t *technology = connman_manager_find_wifi_technology(manager);
-	if(technology)
-	{
-		connman_technology_register_property_changed_cb(technology, technology_property_changed_callback);
-	}
+        g_bus_watch_name(G_BUS_TYPE_SYSTEM, "net.connman", G_BUS_NAME_WATCHER_FLAGS_NONE, connman_service_started, connman_service_stopped, NULL, NULL);
 
 	init_wifi_profile_list();
 	return 0;

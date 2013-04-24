@@ -141,6 +141,7 @@ void connman_agent_free(connman_agent_t *agent)
 		g_free(agent->interface);
 
 	g_free(agent);
+	agent = NULL;
 }
 
 gchar* connman_agent_get_path(connman_agent_t *agent)
