@@ -299,7 +299,7 @@ static gboolean remove_services_from_list(GSList **service_list, gchar **service
     			}
 		}
 
-		*services_removed_iter = *services_removed_iter + 1;
+		services_removed_iter = services_removed_iter + 1;
 	}
 
 	/* 
