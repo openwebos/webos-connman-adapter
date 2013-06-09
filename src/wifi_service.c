@@ -25,6 +25,24 @@
  *
  */
 
+/**
+@page com_webos_wifi com.webos.wifi
+
+@brief Manages connections to Wireless Networks
+
+Each call has a standard return in the case of a failure, as follows:
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | False to inidicate an error
+errorCode | Yes | Integer | Error code
+errorText | Yes | String | Error description
+
+@{
+@}
+*/
+
+
 
 #include <glib.h>
 #include <stdbool.h>
@@ -706,6 +724,44 @@ static void technology_property_changed_callback(gpointer data, const gchar *pro
 	}
 }
 
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_setstate setstate
+
+Enable or Disable WIFI support
+
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+state | Yes | String | "enabled" or "disabled" to control WIFI accordingly
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
+
 /**
  *  @brief Handler for "setstate" command.
  *  Enable/disable the wifi service
@@ -795,6 +851,96 @@ cleanup:
 	return true;
 
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_connect connect
+
+@par To Connect to open, hidden or secure networks
+
+Connects to the given ssid , which can be an open network (requiring 
+no passphrase i.e no 'security' field in its argument), hidden 
+(requiring 'wasCreatedWithJoinOther' field set to true in its argument),
+or secure networks (authenticating with provided passphrase).
+
+Note: webos-connman-adapter only supports simple security using psk, 
+it doesn't support "enterprise" security.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+ssid | Yes | String | SSID of desired network
+wasCreatedWithJoinOther | Yes | String | Set True for a hidden network
+security | Only for secure networks | Object | Security information for establishing a connection
+
+@par "security" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+securityType | Yes | String | Connection type, e.g. wpa-personal, wep, or psk
+simpleSecurity | Yes | Object | Connection information for a simple connection
+
+@par "simpleSecurity" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+passKey | Yes | String | Passkey for connection to network
+
+@par To connect to wps enabled networks:
+
+Connects to the given ssid with wps setup, for WPS-PBC mode or WPS-PIN mode with
+pin to be entered at AP, you just need to set the "wps" field set to true, for
+WPS-PIN mode where pin needs to be entered on the device, you need to also enter
+the "wpspin" value
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+ssid | Yes | String | SSID of desired network
+security | Yes | Object | Security information for establishing a connection
+
+@par "security" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+wps | Yes | Boolean | true to enable wps mode
+wpspin | No | String | WPS PIN if using WPS-PIN mode
+
+@par To connect to a known profile
+
+Connects to an AP using its profileId which is listed in 'getprofilelist' method.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+profileId | Yes | String | Name of desired profile
+
+@par Returns(Call) for all forms
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
 
 
 /**
@@ -891,6 +1037,57 @@ cleanup:
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_findnetworks
+
+List all available wifi access points found in the area.
+
+Callers can subscribe to this method to be notified of any changes.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+subscribe | No | Boolean | true to subcribe to changes
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+foundNetworks | Yes | Array of Objects | List of networkInfo objects
+
+@par "networkInfo" Object
+
+Each entry in the "foundNetworks" array is of the form "networkInfo":{...}
+
+Name | Required | Type | Description
+-----|--------|------|----------
+ssid | Yes | String | SSID of discovered AP
+availableSecurityTypes | Yes | Array of String | List of supported security mechanisms
+signalBars | Yes | Integer | Coarse indication of signal strength
+signalLevel | Yes | Integer | Fine indication of signal strength
+
+@par Returns(Subscription)
+
+As for a successful call
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
+
 /**
  *  @brief Handler for "findnetworks" command.
  *  Scan for all the available access points and list their info like ssid name, 
@@ -972,6 +1169,70 @@ cleanup:
 	j_release(&reply);
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_getstatus getstatus
+
+Gets the current status of wifi connection on the system. 
+
+Callers can subscribe to this method to be notified of any changes
+in the wifi connection status.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+subscribe | No | Boolean | true to subscribe to this method
+
+@par Returns(Call)
+
+All optional fields are absent if WIFI is not connected
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+wakeOnWlan | No | String | provided for backwards compatibility and always set to "disabled"
+status | No | String | Set to "connectedStateChanged" for backwards compatibility
+networkInfo | No | Object | A single object describing the current connection
+
+@par "networkInfo" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+ssid | Yes | String | SSID of AP
+connectState | Yes | String | One of {notAssociated, associating, associated, ipConfigured, ipFailed}
+signalBars | Yes | Integer | Coarse indication of signal strength (1..3)
+signalLevel | Yes | Integer | Absolute indication of signal strength
+ipInfo | Yes | Object | See below
+
+@par "ipInfo" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+interface | Yes | String | 
+ip | Yes | String | IP Address
+subnet | Yes | String | Subnet mask value
+gateway | Yes | String |IP Address of network gateway
+dns | Yes | Array of String | List of DNS server IP addresses
+
+@par Returns(Subscription)
+
+As for a successful call
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
 
 /**
  *  @brief Handler for "getstatus" command.
@@ -1081,6 +1342,53 @@ static void add_wifi_profile_list(jvalue_ref *reply)
 	jobject_put(*reply, J_CSTR_TO_JVAL("profileList"), profile_list_j);
 }
 
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_getprofilelist getprofilelist
+
+Lists all the stored wifi profiles on the system. 
+
+@Note If the wifi AP is an open network with no security, it 
+      won't list the "security" field.
+
+@par Parameters
+
+None
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+profileList | yes | Array of Object | Array of wifiProfile objects
+
+@par "wifiProfile" Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+ssid | yes | String | SSID associated with the profile
+profileId | yes | String | ID string naming the profile (can be used with connect method)
+security | no | Object | Contains a "securityType" object, which is an Array of String
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
+
 /**
  * Handler for "getprofilelist" command.
  *
@@ -1133,6 +1441,48 @@ cleanup:
 	j_release(&reply);
     	return true;
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_getprofile getprofile
+
+Lists the profile with the given profile ID on the system. 
+
+@Note As in getprofilelist, even here the open networks won't list
+      the "security" field.
+
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+profileId | yes | String | Name of profile required
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+wifiProfile | yes | Object | A "wifiProfile" object as described for the getprofilelist method
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
 
 /**
  * Handler for "getprofile" command.
@@ -1224,6 +1574,43 @@ cleanup:
 	j_release(&reply);
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_wifi com.webos.wifi
+@{
+@section com_webos_wifi_deleteprofile deleteprofile
+
+Deletes the profile with the given profile ID
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+profileId | Yes | String | Name of profile to be deleted
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
 
 /**
  * Handler for "deleteprofile" command.

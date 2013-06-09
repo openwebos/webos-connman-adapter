@@ -24,6 +24,22 @@
  *
  */
 
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+
+@brief This service provides overall management of network connections.
+
+Each call has a standard return in the case of a failure, as follows:
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | False to inidicate an error
+errorCode | Yes | Integer | Error code
+errorText | Yes | String | Error description
+
+@{
+@}
+*/
 
 #include <glib.h>
 #include <stdbool.h>
@@ -80,6 +96,7 @@ static void update_connection_status(connman_service_t *connected_service, jvalu
 
 		if(NULL != connected_service->ipinfo.ipv4.method)
 			jobject_put(*status, J_CSTR_TO_JVAL("method"), jstring_create(connected_service->ipinfo.ipv4.method));
+			
 		if(connman_service_type_wifi(connected_service))
 		{
 			if(NULL != connected_service->name)
@@ -165,6 +182,81 @@ void connectionmanager_send_status(void)
 	j_release(&reply);
 }
 
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+@{
+@section com_webos_connectionmanager_getstatus getstatus
+
+Gets the current status of network connections (both wifi and wired) on the system.
+
+Callers of this method can subscribe to it so that they are notified whenever the
+network status changes.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+subcribe | no | Boolean | Subscribe to this method
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+isInternetConnectionAvailable | Yes | Boolean | Indicates if any internet connection is available
+wired | yes | Object | State of wired connection (see below)
+wifi | yes | Object | State of wifi connection (see below)
+
+@par "wired" State Object
+
+Optional fields are only present if "state" is "connected"
+
+Name | Required | Type | Description
+-----|--------|------|----------
+state | yes | String | "connected" or "disconnected" to indicate status.
+interfaceName | no | String | Interface name in use (e.g. "eth0")
+ipAddress | no | String | IP address associated with the connection
+netmask | no | String | Net mask value for the connection
+gateway | no | String | IP address of network gateway
+dns<n> | no | String | List of IP Addreses of dns servers for this connection
+method | no | String | How the IP addressed was assigned (e.g. "Manual", "dhcp")
+onInternet | no | String | "yes" or "no" to indicate if the service is "online"
+
+@par "wifi" State Object
+
+Optional fields are only present if "state" is "connected"
+
+Name | Required | Type | Description
+-----|--------|------|----------
+state | yes | String | "connected" or "disconnected" to indicate status.
+interfaceName | no | String | Interface name in use (e.g. "eth0")
+ipAddress | no | String | IP address associated with the connection
+netmask | no | String | Net mask value for the connection
+gateway | no | String | IP address of network gateway
+dns<n> | no | String | List of IP Addreses of dns servers for this connection
+method | no | String | How the IP addressed was assigned (e.g. "Manual", "dhcp")
+ssid | no | String | SSID of the connected service (if known)
+isWakeOnWiFiEnabled | no | Boolean | True if "Wake on WIFI" is enabled
+onInternet | no | String | "yes" or "no" to indicate if the service is "online"
+
+
+@par Returns(Subscription)
+
+The subcription update contains the same information as the initial call.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
 
 /**
  *  @brief Handler for "getstatus" command.
@@ -260,6 +352,48 @@ static connman_service_t *get_connman_service(gchar *ssid)
 	return NULL;
 }
 
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+@{
+@section com_webos_connectionmanager_setipv4 setipv4
+
+Modify the parameters of an IPv4 connection (wired or WIFI)
+
+If an SSID field is not provided in the request, the modifications are
+applied to the wired connection.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+"method" | yes | String | "dhcp" or "manual"
+"address" | no | String | If specified, sets a new IP address
+"netmask" | no | String | If specified, sets a new netmask
+"gateway" | no | String | If specified, sets a new gateway IP address
+"ssid" | no | String | Select the WIFI connection to modify. If absent, the wired connection is changed.
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
 
 /**
  *  @brief Handler for "setipv4" command.
@@ -361,6 +495,46 @@ Exit:
 	j_release(&parsedObj);
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+@{
+@section com_webos_connectionmanager_setdns setdns
+
+Change the DNS servers for the network. 
+
+If an SSID field is not provided in the request, the modifications are
+applied to the wired connection.
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+dns | yes | Array of String | Each string provides the IP address of a dns server
+ssid | no | String | SSID of WIFI connection to be modified.
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not applicable
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
 
 /**
  *  @brief Handler for "setdns" command.
@@ -491,6 +665,43 @@ static gboolean set_ethernet_state(bool state)
 {
 	return connman_technology_set_powered(connman_manager_find_ethernet_technology(manager),state);
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+@{
+@section com_webos_connectionmanager_setstate setstate
+
+Enable or disable the state of either or both wifi and wired technologies on the system
+
+@par Parameters
+
+Name | Required | Type | Description
+-----|--------|------|----------
+wifi | no | String | "enabled" or "disabled" to set status accordingly
+wired | no | String | "enabled" or "disabled" to set status accordingly
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+
+@par Returns(Subscription)
+
+Not Applicable
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
 
 /**
  *  @brief Handler for "setstate" command.
@@ -628,6 +839,49 @@ static int get_wifi_mac_address(const char *interface, char *mac_address)
         }
         return ret;
 }
+
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            Start of API documentation comment block         //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+/**
+@page com_webos_connectionmanager com.webos.connectionmanager
+@{
+@section com_webos_connectionmanager_getinfo getinfo
+
+Lists information about the WiFi and wired interface (currently just lists MAC addresses for both interfaces).
+
+@par Parameters
+
+None
+
+@par Returns(Call)
+
+Name | Required | Type | Description
+-----|--------|------|----------
+returnValue | yes | Boolean | True
+wiredInfo | no | Object | Object containing information for the current wired connection.
+wifiInfo | no | Object | Object containing information for the current wifi connection.
+
+@par Information Object
+
+Name | Required | Type | Description
+-----|--------|------|----------
+macAddress | yes | String | MAC address of the controller for the connection
+
+@par Returns(Subscription)
+
+Not applicable.
+
+@}
+*/
+/////////////////////////////////////////////////////////////////
+//                                                             //
+//            End of API documentation comment block           //
+//                                                             //
+/////////////////////////////////////////////////////////////////
+
 
 /**
  * Handler for "getinfo" command.
