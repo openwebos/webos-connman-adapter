@@ -1,6 +1,6 @@
 /* @@@LICENSE
 *
-*      Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+*      Copyright (c) 2012-2013 LG Electronics, Inc.
 *      Copyright (c) 2012 Simon Busch <morphis@gravedo.de>
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
