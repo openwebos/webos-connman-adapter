@@ -24,6 +24,7 @@
  *
  */
 
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 
@@ -40,6 +41,7 @@ errorText | Yes | String | Error description
 @{
 @}
 */
+//->End of API documentation comment block
 
 #include <glib.h>
 #include <stdbool.h>
@@ -183,11 +185,7 @@ void connectionmanager_send_status(void)
 }
 
 
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            Start of API documentation comment block         //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 @{
@@ -199,13 +197,11 @@ Callers of this method can subscribe to it so that they are notified whenever th
 network status changes.
 
 @par Parameters
-
 Name | Required | Type | Description
 -----|--------|------|----------
 subcribe | no | Boolean | Subscribe to this method
 
 @par Returns(Call)
-
 Name | Required | Type | Description
 -----|--------|------|----------
 returnValue | yes | Boolean | True
@@ -214,9 +210,7 @@ wired | yes | Object | State of wired connection (see below)
 wifi | yes | Object | State of wifi connection (see below)
 
 @par "wired" State Object
-
 Optional fields are only present if "state" is "connected"
-
 Name | Required | Type | Description
 -----|--------|------|----------
 state | yes | String | "connected" or "disconnected" to indicate status.
@@ -229,9 +223,7 @@ method | no | String | How the IP addressed was assigned (e.g. "Manual", "dhcp")
 onInternet | no | String | "yes" or "no" to indicate if the service is "online"
 
 @par "wifi" State Object
-
 Optional fields are only present if "state" is "connected"
-
 Name | Required | Type | Description
 -----|--------|------|----------
 state | yes | String | "connected" or "disconnected" to indicate status.
@@ -245,18 +237,12 @@ ssid | no | String | SSID of the connected service (if known)
 isWakeOnWiFiEnabled | no | Boolean | True if "Wake on WIFI" is enabled
 onInternet | no | String | "yes" or "no" to indicate if the service is "online"
 
-
 @par Returns(Subscription)
-
 The subcription update contains the same information as the initial call.
 
 @}
 */
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            End of API documentation comment block           //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->End of API documentation comment block
 
 /**
  *  @brief Handler for "getstatus" command.
@@ -352,11 +338,7 @@ static connman_service_t *get_connman_service(gchar *ssid)
 	return NULL;
 }
 
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            Start of API documentation comment block         //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 @{
@@ -368,7 +350,6 @@ If an SSID field is not provided in the request, the modifications are
 applied to the wired connection.
 
 @par Parameters
-
 Name | Required | Type | Description
 -----|--------|------|----------
 "method" | yes | String | "dhcp" or "manual"
@@ -378,22 +359,16 @@ Name | Required | Type | Description
 "ssid" | no | String | Select the WIFI connection to modify. If absent, the wired connection is changed.
 
 @par Returns(Call)
-
 Name | Required | Type | Description
 -----|--------|------|----------
 returnValue | yes | Boolean | True
 
 @par Returns(Subscription)
-
-Not applicable.
+None
 
 @}
 */
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            End of API documentation comment block           //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->End of API documentation comment block
 
 /**
  *  @brief Handler for "setipv4" command.
@@ -496,11 +471,7 @@ Exit:
 	return true;
 }
 
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            Start of API documentation comment block         //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 @{
@@ -512,29 +483,22 @@ If an SSID field is not provided in the request, the modifications are
 applied to the wired connection.
 
 @par Parameters
-
 Name | Required | Type | Description
 -----|--------|------|----------
 dns | yes | Array of String | Each string provides the IP address of a dns server
 ssid | no | String | SSID of WIFI connection to be modified.
 
 @par Returns(Call)
-
 Name | Required | Type | Description
 -----|--------|------|----------
 returnValue | yes | Boolean | True
 
 @par Returns(Subscription)
-
-Not applicable
+None
 
 @}
 */
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            End of API documentation comment block           //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->End of API documentation comment block
 
 /**
  *  @brief Handler for "setdns" command.
@@ -666,11 +630,7 @@ static gboolean set_ethernet_state(bool state)
 	return connman_technology_set_powered(connman_manager_find_ethernet_technology(manager),state);
 }
 
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            Start of API documentation comment block         //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 @{
@@ -679,29 +639,22 @@ static gboolean set_ethernet_state(bool state)
 Enable or disable the state of either or both wifi and wired technologies on the system
 
 @par Parameters
-
 Name | Required | Type | Description
 -----|--------|------|----------
 wifi | no | String | "enabled" or "disabled" to set status accordingly
 wired | no | String | "enabled" or "disabled" to set status accordingly
 
 @par Returns(Call)
-
 Name | Required | Type | Description
 -----|--------|------|----------
 returnValue | yes | Boolean | True
 
 @par Returns(Subscription)
-
-Not Applicable
+None
 
 @}
 */
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            End of API documentation comment block           //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->End of API documentation comment block
 
 /**
  *  @brief Handler for "setstate" command.
@@ -840,11 +793,7 @@ static int get_wifi_mac_address(const char *interface, char *mac_address)
         return ret;
 }
 
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            Start of API documentation comment block         //
-//                                                             //
-/////////////////////////////////////////////////////////////////
+//->Start of API documentation comment block
 /**
 @page com_webos_connectionmanager com.webos.connectionmanager
 @{
@@ -853,11 +802,9 @@ static int get_wifi_mac_address(const char *interface, char *mac_address)
 Lists information about the WiFi and wired interface (currently just lists MAC addresses for both interfaces).
 
 @par Parameters
-
 None
 
 @par Returns(Call)
-
 Name | Required | Type | Description
 -----|--------|------|----------
 returnValue | yes | Boolean | True
@@ -865,23 +812,16 @@ wiredInfo | no | Object | Object containing information for the current wired co
 wifiInfo | no | Object | Object containing information for the current wifi connection.
 
 @par Information Object
-
 Name | Required | Type | Description
 -----|--------|------|----------
 macAddress | yes | String | MAC address of the controller for the connection
 
 @par Returns(Subscription)
-
-Not applicable.
+None
 
 @}
 */
-/////////////////////////////////////////////////////////////////
-//                                                             //
-//            End of API documentation comment block           //
-//                                                             //
-/////////////////////////////////////////////////////////////////
-
+//->End of API documentation comment block
 
 /**
  * Handler for "getinfo" command.
