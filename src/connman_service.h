@@ -167,6 +167,16 @@ extern gboolean connman_service_connect(connman_service_t *service, connman_serv
 extern gboolean connman_service_disconnect(connman_service_t *service);
 
 /**
+ * remove a remote connman service
+ *
+ * @param[in]  service a service instance
+ *
+ * @return false if the remove call failed, true otherwise
+ */
+extern gboolean connman_service_remove(connman_service_t *service);
+
+
+/**
  * @brief  Sets ipv4 properties for the connman service
  *
  * @param[IN]  service A service instance

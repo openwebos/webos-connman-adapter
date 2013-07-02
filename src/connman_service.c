@@ -173,6 +173,28 @@ gboolean connman_service_disconnect(connman_service_t *service)
 }
 
 /**
+ * Remove a remote connman service (see header for API details)
+ */
+
+gboolean connman_service_remove(connman_service_t *service)
+{
+	if(NULL == service)
+		return FALSE;
+
+	GError *error = NULL;
+
+	connman_interface_service_call_remove_sync(service->remote, NULL, &error);
+	if (error)
+	{
+		WCA_LOG_CRITICAL("Error: %s", error->message);
+		g_error_free(error);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+
+/**
  * Sets ipv4 properties for the connman service (see header for API details)
  */
 

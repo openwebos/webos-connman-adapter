@@ -91,6 +91,8 @@ limitations under the License.
 		</method>
 		<method name="Disconnect">
 		</method>
+		<method name="Remove">
+		</method>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

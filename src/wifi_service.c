@@ -1617,6 +1617,8 @@ static bool handle_delete_profile_command(LSHandle *sh, LSMessage *message, void
 				/* Deleting profile for this ssid, so set autoconnect property for this 
 				   service to FALSE so that connman doesn't autoconnect to this service next time */
 				connman_service_set_autoconnect(service, FALSE);
+				/* Remove the service from connman */
+				connman_service_remove(service);
 			}
 		}
 		delete_profile(profile);
