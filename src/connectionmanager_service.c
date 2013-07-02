@@ -260,8 +260,6 @@ The subcription update contains the same information as the initial call.
 
 static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* context)
 {
-	if(!connman_status_check(manager, sh, message))
-		return true;
 
 	jvalue_ref reply = jobject_create();
 	LSError lserror;
@@ -276,24 +274,28 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 			LSErrorFree(&lserror);
 		}
 		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
+		if(!connman_manager_is_manager_available(manager))
+			goto response;
 	}
+	if(!connman_status_check(manager, sh, message))
+		goto cleanup;
 
 	send_connection_status(&reply);
 
-	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-	if(!response_schema)
+response:
 	{
-		LSMessageReplyErrorUnknown(sh,message);
-		goto cleanup;
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(!response_schema)
+		{
+			LSMessageReplyErrorUnknown(sh,message);
+			goto cleanup;
+		}
+		if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+		jschema_release(&response_schema);
 	}
-
-	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror)) {
-		LSErrorPrint(&lserror, stderr);
-		LSErrorFree(&lserror);
-	}
-
-	jschema_release(&response_schema);
-
 cleanup:
 	j_release(&reply);
 	return true;

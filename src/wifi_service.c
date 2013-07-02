@@ -1076,6 +1076,8 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 			LSErrorFree(&lserror);
 		}
 		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
+		if(!connman_manager_is_manager_available(manager))
+			goto response;
 	}
 
 	if(!connman_status_check(manager, sh, message))
@@ -1096,12 +1098,22 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 		LSMessageReplySuccess(sh, message);
 		goto cleanup;
 	}
+	if(!connman_technology_scan_network(wifi_tech))
+        {
+                LSMessageReplyCustomError(sh,message,"Error in scanning network");
+                goto cleanup;
+        }
 
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
-	/* Fill in details of all the found wifi networks */
-	if(populate_wifi_networks(&reply))
+	if(!populate_wifi_networks(&reply))
 	{
+		LSMessageReplySuccess(sh, message);
+		goto cleanup;
+	}
+response:
+	{
+		/* Fill in details of all the found wifi networks */
 		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
 		if(!response_schema)
 		{
@@ -1115,8 +1127,6 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 		}
 		jschema_release(&response_schema);
 	}
-	else
-		LSMessageReplySuccess(sh, message);
 
 cleanup:
 	if (LSErrorIsSet(&lserror))
@@ -1208,6 +1218,8 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 			LSErrorFree(&lserror);
 		}
 		jobject_put(reply, J_CSTR_TO_JVAL("subscribed"), jboolean_create(subscribed));
+		if(!connman_manager_is_manager_available(manager))
+			goto response;
 	}
 
 	if(!connman_status_check(manager, sh, message))
@@ -1220,21 +1232,23 @@ static bool handle_get_status_command(LSHandle* sh, LSMessage *message, void* co
 
 	send_connection_status(&reply);
 
-	jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
-	if(!response_schema)
+response:
 	{
-		LSMessageReplyErrorUnknown(sh,message);
-		goto cleanup;
+		jschema_ref response_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(!response_schema)
+		{
+			LSMessageReplyErrorUnknown(sh,message);
+			goto cleanup;
+		}
+
+		if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror))
+		{
+			LSErrorPrint(&lserror, stderr);
+			LSErrorFree(&lserror);
+		}
+
+		jschema_release(&response_schema);
 	}
-	
-	if (!LSMessageReply(sh, message, jvalue_tostring(reply, response_schema), &lserror))
-	{
-        	LSErrorPrint(&lserror, stderr);
-        	LSErrorFree(&lserror);
-    	}
-
-	jschema_release(&response_schema);
-
 cleanup:
 	if (LSErrorIsSet(&lserror))
 	{
