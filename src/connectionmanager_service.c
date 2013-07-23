@@ -904,9 +904,9 @@ static void technology_property_changed_callback(gpointer data, const gchar *pro
 		return;
 
 	/* Need to send getstatus method to all com.palm.connectionmanager subscribers whenever the
-	   "powered" state of the technology changes */
+	   "powered" or "connected" state of the technology changes */
 
-	if(g_str_equal(property,"Powered"))
+	if(g_str_equal(property,"Powered") || g_str_equal(property,"Connected"))
 	{
 		connectionmanager_send_status();
 	}
