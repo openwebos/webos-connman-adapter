@@ -833,6 +833,7 @@ static bool handle_set_state_command(LSHandle *sh, LSMessage *message, void* con
 	set_wifi_state(enable_wifi);
 	
 	LSMessageReplySuccess(sh,message);
+	goto cleanup;
 
 invalid_params:
 	LSMessageReplyErrorInvalidParams(sh, message);
