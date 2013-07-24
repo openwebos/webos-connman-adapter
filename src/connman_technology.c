@@ -82,6 +82,12 @@ static void
 property_changed_cb(ConnmanInterfaceTechnology *proxy,const gchar * property, GVariant *v,
               connman_technology_t      *technology)
 {
+	GVariant *val = g_variant_get_variant(v);
+	if (g_str_equal(property, "Powered"))
+		technology->powered = g_variant_get_boolean(val);
+	else if (g_str_equal(property, "P2P"))
+		technology->p2p = g_variant_get_boolean(val);
+
 	if(NULL != technology->handle_property_change_fn)
                 (technology->handle_property_change_fn)((gpointer)technology, property, v);
 }
