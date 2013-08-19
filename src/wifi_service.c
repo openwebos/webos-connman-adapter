@@ -79,10 +79,16 @@ typedef struct connection_settings {
 	char *wpspin;
 } connection_settings_t;
 
+/* Schedule a scan every 30 seconds */
+#define WIFI_DEFAULT_SCAN_TIMEOUT	30000
+
 static LSHandle *pLsHandle, *pLsPublicHandle;
 
 connman_manager_t *manager = NULL;
 static connman_agent_t *agent = NULL;
+
+guint scan_timeout_source = 0;
+guint current_scan_interval = 0;
 
 static connection_settings_t* connection_settings_new(void)
 {
@@ -123,6 +129,13 @@ static gboolean is_wifi_powered(void)
 
 static gboolean set_wifi_state(bool state)
 {
+	/* if scan is still scheduled abort it */
+	if (scan_timeout_source > 0)
+	{
+		g_source_remove(scan_timeout_source);
+		scan_timeout_source = 0;
+	}
+
 	return connman_technology_set_powered(connman_manager_find_wifi_technology(manager),state);
 }
 
@@ -1009,6 +1022,48 @@ cleanup:
 	return true;
 }
 
+gboolean scan_timeout_cb(gpointer user_data)
+{
+	LSError error;
+	LSHandle *sh = user_data;
+	LSSubscriptionIter *iter = NULL;
+	unsigned int subscription_count = 0;
+	connman_technology_t *wifi_tech = 0;
+
+	LSErrorInit(&error);
+
+	if (!LSSubscriptionAcquire(sh, "/" LUNA_METHOD_FINDNETWORKS, &iter, &error))
+	{
+		LSErrorPrint(&error, stderr);
+		LSErrorFree(&error);
+
+		/* we could not count pending subscriptions so we assume we don't have any users
+		 * connected which are waiting for further scan results. */
+		scan_timeout_source = 0;
+		return FALSE;
+	}
+
+	/* count all subscription we have for com.palm.wifi/findnetworks */
+	while (LSSubscriptionHasNext(iter))
+	{
+		LSMessage *message = LSSubscriptionNext(iter);
+		LSMessageUnref(message);
+		subscription_count++;
+	}
+
+	/* if we don't have any subscriptions left we don't have to scan anymore */
+	if (subscription_count == 0)
+	{
+		scan_timeout_source = 0;
+		return FALSE;
+	}
+
+	wifi_tech = connman_manager_find_wifi_technology(manager);
+	connman_technology_scan_network(wifi_tech);
+
+	return TRUE;
+}
+
 //->Start of API documentation comment block
 /**
 @page com_webos_wifi com.webos.wifi
@@ -1017,12 +1072,17 @@ cleanup:
 
 List all available wifi access points found in the area.
 
-Callers can subscribe to this method to be notified of any changes.
+Callers can subscribe to this method to be notified of any changes. If a
+caller subscribes to further results he has to unsubscribe once it doesn't
+need fresh results any more. Once more than one client is subscribed a
+scan for available wifi networks is scheduled every 30 seconds until no
+client is subscribed anymore.
 
 @par Parameters
 Name | Required | Type | Description
 -----|--------|------|----------
 subscribe | No | Boolean | true to subcribe to changes
+interval | No | Integer | Internval in seconds to schedule a new scan (defaults to 30 seconds)
 
 @par Returns(Call)
 Name | Required | Type | Description
@@ -1046,7 +1106,6 @@ As for a successful call
 */
 //->End of API documentation comment block
 
-
 /**
  *  @brief Handler for "findnetworks" command.
  *  Scan for all the available access points and list their info like ssid name, 
@@ -1062,7 +1121,7 @@ As for a successful call
  *
  */
 
-static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
+static bool handle_findnetworks_command(LSHandle *sh, LSMessage *message, void* context)
 {
 	jvalue_ref reply = jobject_create();
 	bool subscribed = false;
@@ -1093,17 +1152,60 @@ static bool handle_scan_command(LSHandle *sh, LSMessage *message, void* context)
 		goto cleanup;
 	}
 
-	connman_technology_t *wifi_tech = connman_manager_find_wifi_technology(manager);
-	if(NULL == wifi_tech)
+	/* only scan if we don't have a scheduled scan pending */
+	if (scan_timeout_source > 0)
 	{
-		LSMessageReplySuccess(sh, message);
-		goto cleanup;
+		connman_technology_t *wifi_tech = connman_manager_find_wifi_technology(manager);
+		if(NULL == wifi_tech)
+		{
+			LSMessageReplySuccess(sh, message);
+			goto cleanup;
+		}
+
+		if(!connman_technology_scan_network(wifi_tech))
+		{
+			LSMessageReplyCustomError(sh,message,"Error in scanning network");
+			goto cleanup;
+		}
 	}
-	if(!connman_technology_scan_network(wifi_tech))
-        {
-                LSMessageReplyCustomError(sh,message,"Error in scanning network");
-                goto cleanup;
-        }
+
+	/* If client has subscribed we need to take care that we give him fresh results
+	 * regularly by scheduling a scan continously in a specific interval */
+	if (subscribed && scan_timeout_source == 0)
+	{
+		int scan_interval = WIFI_DEFAULT_SCAN_TIMEOUT;
+
+		jvalue_ref parsedObj = {0};
+		jschema_ref input_schema = jschema_parse (j_cstr_to_buffer("{}"), DOMOPT_NOOPT, NULL);
+		if(!input_schema)
+			return false;
+
+		JSchemaInfo schemaInfo;
+		jschema_info_init(&schemaInfo, input_schema, NULL, NULL); // no external refs & no error handlers
+		parsedObj = jdom_parse(j_cstr_to_buffer(LSMessageGetPayload(message)), DOMOPT_NOOPT, &schemaInfo);
+		jschema_release(&input_schema);
+
+		if (jis_null(parsedObj))
+		{
+				LSMessageReplyErrorBadJSON(sh, message);
+				return true;
+		}
+
+		jvalue_ref intervalObj = 0;
+		if (jobject_get_exists(parsedObj, J_CSTR_TO_BUF("interval"), &intervalObj))
+		{
+			if (!jis_number(intervalObj))
+			{
+				LSMessageReplyErrorInvalidParams(sh, message);
+				goto cleanup;
+			}
+
+			jnumber_get_i32(intervalObj, &scan_interval);
+		}
+
+		scan_timeout_source = g_timeout_add_full(G_PRIORITY_DEFAULT, scan_interval,
+												 scan_timeout_cb, sh, NULL);
+	}
 
 	jobject_put(reply, J_CSTR_TO_JVAL("returnValue"), jboolean_create(true));
 
@@ -1690,7 +1792,7 @@ static LSMethod wifi_methods[] = {
     { LUNA_METHOD_GETPROFILE,		handle_get_profile_command },
     { LUNA_METHOD_SETSTATE,		handle_set_state_command },
     { LUNA_METHOD_CONNECT,		handle_connect_command },
-    { LUNA_METHOD_FINDNETWORKS,		handle_scan_command },
+    { LUNA_METHOD_FINDNETWORKS,		handle_findnetworks_command },
     { LUNA_METHOD_DELETEPROFILE,	handle_delete_profile_command },
     { LUNA_METHOD_GETSTATUS,		handle_get_status_command },
     { },
