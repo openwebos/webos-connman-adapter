@@ -79,8 +79,8 @@ typedef struct connection_settings {
 	char *wpspin;
 } connection_settings_t;
 
-/* Schedule a scan every 30 seconds */
-#define WIFI_DEFAULT_SCAN_TIMEOUT	30000
+/* Schedule a scan every 15 seconds */
+#define WIFI_DEFAULT_SCAN_TIMEOUT	15000
 
 static LSHandle *pLsHandle, *pLsPublicHandle;
 
