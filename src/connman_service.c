@@ -27,6 +27,9 @@
 #include "utils.h"
 #include "logging.h"
 
+/* gdbus default timeout is 25 seconds */
+#define DBUS_CALL_TIMEOUT	(60 * 1000)
+
 /**
  * Check if the type of the service is wifi (see header for API details)
  */
@@ -501,6 +504,8 @@ connman_service_t *connman_service_new(GVariant *variant)
 		g_free(service);
 		return NULL;
 	}
+
+	g_dbus_proxy_set_default_timeout(service->remote, DBUS_CALL_TIMEOUT);
 
 	service->sighandler_id = g_signal_connect_data(G_OBJECT(service->remote), "property-changed",
 		G_CALLBACK(property_changed_cb), service, NULL, 0);
