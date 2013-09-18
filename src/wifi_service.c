@@ -322,6 +322,7 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 		case  CONNMAN_SERVICE_STATE_READY:
 		case  CONNMAN_SERVICE_STATE_ONLINE:
 			send_connection_status_to_subscribers(service->state);
+			connman_service_set_autoconnect(service, TRUE);
 			break;
 		case CONNMAN_SERVICE_STATE_IDLE:
 			send_connection_status_to_subscribers(service->state);
@@ -346,7 +347,6 @@ static void service_state_changed_callback(gpointer data, const gchar *new_state
 			create_new_profile(service->name, service->security, service->hidden);
 		else
 			create_new_profile(service->name, NULL, service->hidden);
-		connman_service_set_autoconnect(service, TRUE);
 	}
 
 	/* Unset agent callback as we no longer have any valid input for connman available */
