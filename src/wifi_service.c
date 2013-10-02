@@ -428,10 +428,11 @@ static bool populate_wifi_networks(jvalue_ref *reply)
 
         for (ap = manager->wifi_services; NULL != ap ; ap = ap->next)
 	{
-                jvalue_ref network = jobject_create();
                 connman_service_t *service = (connman_service_t *)(ap->data);
                 if(NULL == service->name)
                         continue;
+
+		jvalue_ref network = jobject_create();
                 add_service(service, &network);
 
                 jvalue_ref network_list_j = jobject_create();
@@ -616,8 +617,8 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 			jobject_get_exists(simple_security_obj, J_CSTR_TO_BUF("passKey"), &passkey_obj))
 		{
 			passkey_buf = jstring_get(passkey_obj);
-
 			settings->passkey = strdup(passkey_buf.m_str);
+			jstring_free_buffer(passkey_buf);
 		}
 		else if (jobject_get_exists(security_obj, J_CSTR_TO_BUF("enterpriseSecurity"), &enterprise_security_obj))
 		{
@@ -631,6 +632,7 @@ static void connect_wifi_with_ssid(const char *ssid, jvalue_ref req_object, luna
 			{
 				wpspin_buf = jstring_get(wpspin_obj);
 				settings->wpspin = strdup(wpspin_buf.m_str);
+				jstring_free_buffer(wpspin_buf);
 			}
 			else
 			{
@@ -987,6 +989,7 @@ static bool handle_connect_command(LSHandle *sh, LSMessage *message, void* conte
 	{
 		raw_buffer ssid_buf = jstring_get(ssidObj);
 		ssid = g_strdup(ssid_buf.m_str);
+		jstring_free_buffer(ssid_buf);
 	}
 	else if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("profileId"), &profileIdObj))
 	{
@@ -1732,7 +1735,6 @@ cleanup:
 	j_release(&parsedObj);
 	return true;
 }
-
 
 static void agent_registered_callback(gpointer user_data)
 {

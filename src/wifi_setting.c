@@ -169,6 +169,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 	{
 		raw_buffer enc_profile_buf = jstring_get(wifiProfileObj);
 		gchar *enc_profile = g_strdup(enc_profile_buf.m_str);
+		jstring_free_buffer(enc_profile_buf);
 		gchar *dec_profile = wifi_setting_decrypt(enc_profile, WIFI_LUNA_PREFS_ID);
 
 		jvalue_ref parsedObj = {0};
@@ -192,6 +193,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 		{
 			raw_buffer ssid_buf = jstring_get(ssidObj);
 			ssid = g_strdup(ssid_buf.m_str);
+			jstring_free_buffer(ssid_buf);
 			ret = TRUE;
 		}
 		else
@@ -209,6 +211,7 @@ static gboolean populate_wifi_profile(jvalue_ref profileObj)
 					jvalue_ref securityObj = jarray_get(securityListObj, i);
 					raw_buffer security_buf = jstring_get(securityObj);
 					security[i] = g_strdup(security_buf.m_str);
+					jstring_free_buffer(security_buf);
 				}
 			}
 			if(jobject_get_exists(parsedObj,J_CSTR_TO_BUF("wasCreatedWithJoinOther"), &hiddenObj))

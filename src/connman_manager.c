@@ -773,6 +773,7 @@ static void connman_manager_update_state(connman_manager_t *manager)
 		{
 			GVariant *v = g_variant_get_child_value(property, 1);
 			GVariant *va = g_variant_get_variant(v);
+			g_free(manager->state);
 			manager->state = g_strdup(g_variant_get_string(va, NULL));
 		}
 	}

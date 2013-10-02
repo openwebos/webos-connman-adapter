@@ -133,6 +133,7 @@ static void connect_callback(GDBusConnection *connection, GAsyncResult *res, gpo
 
 	if (cb != NULL)
 		cb(ret, cbd->data);
+	g_free(cbd);
 }
 
 /**
@@ -322,6 +323,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 				{
 					GVariant *ifacev = g_variant_get_child_value(ethernet, 1);
 					GVariant *ifaceva = g_variant_get_variant(ifacev);
+					g_free(service->ipinfo.iface);
 					service->ipinfo.iface = g_variant_dup_string(ifaceva, NULL);
 				}
 	  		}
@@ -340,24 +342,28 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 				{
 					GVariant *netmaskv = g_variant_get_child_value(ipv4, 1);
 					GVariant *netmaskva = g_variant_get_variant(netmaskv);
+					g_free(service->ipinfo.ipv4.method);
 					service->ipinfo.ipv4.method = g_variant_dup_string(netmaskva, NULL);
 				}
 				if(g_str_equal(ikey, "Netmask"))
 				{
 					GVariant *netmaskv = g_variant_get_child_value(ipv4, 1);
 					GVariant *netmaskva = g_variant_get_variant(netmaskv);
+					g_free(service->ipinfo.ipv4.netmask);
 					service->ipinfo.ipv4.netmask = g_variant_dup_string(netmaskva, NULL);
 				}
 				if(g_str_equal(ikey, "Address"))
 				{
 					GVariant *addressv = g_variant_get_child_value(ipv4, 1);
 					GVariant *addressva = g_variant_get_variant(addressv);
+					g_free(service->ipinfo.ipv4.address);
 					service->ipinfo.ipv4.address = g_variant_dup_string(addressva, NULL);
 				}
 				if(g_str_equal(ikey, "Gateway"))
 				{
 					GVariant *gatewayv = g_variant_get_child_value(ipv4, 1);
 					GVariant *gatewayva = g_variant_get_variant(gatewayv);
+					g_free(service->ipinfo.ipv4.gateway);
 					service->ipinfo.ipv4.gateway = g_variant_dup_string(gatewayva, NULL);
 				}
 			  }
@@ -366,6 +372,7 @@ gboolean connman_service_get_ipinfo(connman_service_t *service)
 		{
 			GVariant *v = g_variant_get_child_value(property, 1);
 			GVariant *va = g_variant_get_child_value(v, 0);
+			g_strfreev(service->ipinfo.dns);
 			service->ipinfo.dns = g_variant_dup_strv(va, NULL);
 		}
 	}
@@ -438,7 +445,10 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 		GVariant *val = g_variant_get_variant(val_v);
 		const gchar *key = g_variant_get_string(key_v, NULL);
 		if (g_str_equal(key, "Name"))
+		{
+			g_free(service->name);
 			service->name =  g_variant_dup_string(val, NULL);
+		}
 		else if (g_str_equal(key, "Type"))
 		{
 			const gchar *v = g_variant_get_string(val, NULL);
@@ -451,6 +461,7 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 		}
 		else if (g_str_equal(key, "State"))
 		{
+			g_free(service->state);
 			service->state =  g_variant_dup_string(val, NULL);
 			// Only a hidden service gets added as a new service with "association" state
 			if(g_str_equal(service->state, "association"))
@@ -459,7 +470,10 @@ void connman_service_update_properties(connman_service_t *service, GVariant *pro
 		else if (g_str_equal(key, "Strength"))
 			service->strength = g_variant_get_byte(val);
 		else if(g_str_equal(key, "Security"))
+		{
+			g_strfreev(service->security);
 			service->security = g_variant_dup_strv(val, NULL);
+		}
 		else if (g_str_equal(key, "AutoConnect"))
 			service->auto_connect = g_variant_get_boolean(val);
 		else if (g_str_equal(key, "Immutable"))

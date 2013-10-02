@@ -139,19 +139,26 @@ static void send_connection_status(jvalue_ref *reply)
 	{
 		update_connection_status(connected_wired_service, &connected_wired_status);
 		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), connected_wired_status);
+		j_release(&disconnected_wired_status);
 	}
 	else
+	{
 		jobject_put(*reply, J_CSTR_TO_JVAL("wired"), disconnected_wired_status);
+		j_release(&connected_wired_status);
+	}
 
 	connman_service_t *connected_wifi_service = connman_manager_get_connected_service(manager->wifi_services);
 	if(NULL != connected_wifi_service)
 	{
 		update_connection_status(connected_wifi_service, &connected_wifi_status);
 		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), connected_wifi_status);
+		j_release(&disconnected_wifi_status);
 	}
 	else
+	{
 		jobject_put(*reply, J_CSTR_TO_JVAL("wifi"), disconnected_wifi_status);
-
+		j_release(&connected_wifi_status);
+	}
 }
 
 
@@ -417,30 +424,35 @@ static bool handle_set_ipv4_command(LSHandle *sh, LSMessage *message, void* cont
 	{
 		raw_buffer method_buf = jstring_get(methodObj);
 		ipv4.method = g_strdup(method_buf.m_str);
+		jstring_free_buffer(method_buf);
 		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("address"), &addressObj))
 	{
 		raw_buffer address_buf = jstring_get(addressObj);
 		ipv4.address = g_strdup(address_buf.m_str);
+		jstring_free_buffer(address_buf);
 		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("netmask"), &netmaskObj))
 	{
 		raw_buffer netmask_buf = jstring_get(netmaskObj);
 		ipv4.netmask = g_strdup(netmask_buf.m_str);
+		jstring_free_buffer(netmask_buf);
 		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("gateway"), &gatewayObj))
 	{
 		raw_buffer gateway_buf = jstring_get(gatewayObj);
 		ipv4.gateway = g_strdup(gateway_buf.m_str);
+		jstring_free_buffer(gateway_buf);
 		invalidArg = FALSE;
 	}
 	if(jobject_get_exists(parsedObj, J_CSTR_TO_BUF("ssid"), &ssidObj))
 	{
 		raw_buffer ssid_buf = jstring_get(ssidObj);
 		ssid = g_strdup(ssid_buf.m_str);
+		jstring_free_buffer(ssid_buf);
 		invalidArg = FALSE;
 	}
 	if(invalidArg == TRUE)
@@ -549,6 +561,7 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 		{
 			raw_buffer dns_buf = jstring_get(jarray_get(dnsObj, i));
 			dns[i] = g_strdup(dns_buf.m_str);
+			jstring_free_buffer(dns_buf);
 		}
 	}
 	else
@@ -561,6 +574,7 @@ static bool handle_set_dns_command(LSHandle *sh, LSMessage *message, void* conte
 	{
 		raw_buffer ssid_buf = jstring_get(ssidObj);
 		ssid = g_strdup(ssid_buf.m_str);
+		jstring_free_buffer(ssid_buf);
 	}
 
 	connman_service_t *service = get_connman_service(ssid);
