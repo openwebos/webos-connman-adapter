@@ -446,6 +446,9 @@ static bool populate_wifi_networks(jvalue_ref *reply)
 	{
                 jobject_put(*reply, J_CSTR_TO_JVAL("foundNetworks"), network_list);
 	}
+	else
+		j_release(&network_list);
+
         return networks_found;
 }
 
