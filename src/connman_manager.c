@@ -666,7 +666,7 @@ services_changed_cb(ConnmanInterfaceManager *proxy, GVariant *services_added,
 {
 	WCA_LOG_DEBUG("Services_changed ");
 	gboolean update_status = connman_manager_update_services(manager, services_added);
-	gboolean remove_status = connman_manager_remove_old_services(manager, services_removedy);
+	gboolean remove_status = connman_manager_remove_old_services(manager, services_removed);
 	if(update_status || remove_status)
 	{
 		if(NULL != manager->handle_services_change_fn)
