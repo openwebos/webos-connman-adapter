@@ -384,6 +384,8 @@ static void add_service(connman_service_t *service, jvalue_ref *network)
 			// We do not support enterprise security i.e "ieee8021x" security type
 			if(!g_strcmp0(service->security[i],"ieee8021x"))
 				supported = FALSE;
+			else if(!g_strcmp0(service->security[i],"none"))
+				continue;
 			jarray_append(security_list, jstring_create(service->security[i]));
 		}
 		jobject_put(*network, J_CSTR_TO_JVAL("availableSecurityTypes"),security_list);
